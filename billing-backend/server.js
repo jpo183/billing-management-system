@@ -673,70 +673,23 @@ app.post("/api/addl-billings", async (req, res) => {
 app.get("/api/addl-billings/:partnerId", async (req, res) => {
   try {
     const { partnerId } = req.params;
-    const { start_date, end_date } = req.query;
-
-    // Debug queries
-    console.log('Checking raw addl_billings data...');
-    const rawData = await pool.query(`
-      SELECT * FROM addl_billings WHERE partner_id = $1
-    `, [partnerId]);
-    console.log(`Found ${rawData.rowCount} raw records`);
+    console.log('🔍 Fetching additional billings for partner:', partnerId);
     
-    console.log('Checking join with billing_items...');
-    const joinCheck = await pool.query(`
-      SELECT ab.id, bi.item_name 
-      FROM addl_billings ab
-      JOIN billing_items bi ON ab.billing_item_id = bi.id
-      WHERE ab.partner_id = $1
-    `, [partnerId]);
-    console.log(`Found ${joinCheck.rowCount} records after billing_items join`);
+    const result = await pool.query(
+      `SELECT ab.*, bi.item_name, bi.billing_type
+       FROM addl_billings ab
+       LEFT JOIN billing_items bi ON ab.billing_item_id = bi.id
+       WHERE ab.partner_id = $1 
+       AND ab.invoice_id IS NULL
+       ORDER BY ab.billing_date DESC`,
+      [partnerId]
+    );
     
-    console.log('Checking invoice status...');
-    const invoiceCheck = await pool.query(`
-      SELECT ab.id, im.status
-      FROM addl_billings ab
-      LEFT JOIN invoice_one_time_fees iotf ON iotf.addl_billing_id = ab.id
-      LEFT JOIN invoice_master im ON iotf.invoice_id = im.id
-      WHERE ab.partner_id = $1
-    `, [partnerId]);
-    console.log('Invoice status check:', invoiceCheck.rows);
-
-    const result = await pool.query(`
-      SELECT 
-        ab.id as id,
-        ab.partner_id,
-        ab.client_name,
-        ab.billing_date,
-        ab.amount,
-        ab.description,
-        ab.billing_item_id,
-        bi.item_name,
-        bi.item_code,
-        p.partner_name,
-        p.partner_code
-      FROM addl_billings ab
-      JOIN billing_items bi ON ab.billing_item_id = bi.id
-      JOIN partners p ON ab.partner_id = p.id
-      WHERE ab.partner_id = $1
-      AND ab.billing_date >= $2
-      AND ab.billing_date <= $3
-      AND NOT EXISTS (
-        SELECT 1 
-        FROM invoice_one_time_fees iotf
-        JOIN invoice_master im ON iotf.invoice_id = im.id
-        WHERE iotf.addl_billing_id = ab.id
-        AND im.status != 'void'
-      )
-      ORDER BY ab.billing_date DESC
-    `, [partnerId, start_date, end_date]);
-    
+    console.log(`✅ Found ${result.rows.length} non-finalized additional billings`);
     res.json(result.rows);
   } catch (error) {
-    console.error("Error fetching filtered additional billings:", error);
-    res.status(500).json({ 
-      error: "Server Error",
-      details: error.message
-    });
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Failed to fetch additional billings' });
   }
 });
 
@@ -1238,14 +1191,14 @@ app.get("/api/monthly-billing/partner/:partnerCode/:month", async (req, res) => 
     const result = await pool.query(
       `SELECT mb.* 
        FROM monthly_billing mb
-       JOIN partners p ON mb.client_code = p.partner_code
-       WHERE p.partner_code = $1 
+       JOIN partners p ON mb.client_code = p.partner_code 
+       WHERE p.id = $1 
        AND TO_CHAR(mb.month_year, 'YYYY-MM') = $2
        ORDER BY mb.client_name`,
       [partnerCode, month]
     );
     
-    console.log(`✅ Found ${result.rows.length} records`);
+    console.log(`✅ Found ${result.rows.length} records for partner ${partnerCode} in ${month}`);
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error:', error);

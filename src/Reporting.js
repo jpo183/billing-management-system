@@ -74,29 +74,26 @@ const Reporting = () => {
 
   useEffect(() => {
     if (selectedPartner && selectedMonth && activeReport === 'partnerMonthlyData') {
-      const partner = partners.find(p => p.id === parseInt(selectedPartner));
-      if (partner?.partner_code) {
-        console.log('🔄 Fetching partner monthly data:', {
-          partner: partner.partner_code,
-          month: selectedMonth
-        });
+      console.log('🔄 Fetching partner monthly data:', {
+        partnerId: selectedPartner,
+        month: selectedMonth
+      });
 
-        fetch(`${API_URL}/api/monthly-billing/partner/${partner.partner_code}/${selectedMonth}`)
-          .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch partner monthly data');
-            return response.json();
-          })
-          .then(data => {
-            console.log('📊 Loaded partner monthly data:', data);
-            setBillingData(data);
-          })
-          .catch(error => {
-            console.error('❌ Error fetching partner monthly data:', error);
-            setBillingData([]);
-          });
-      }
+      fetch(`${API_URL}/api/monthly-billing/partner/${selectedPartner}/${selectedMonth}`)
+        .then(response => {
+          if (!response.ok) throw new Error('Failed to fetch partner monthly data');
+          return response.json();
+        })
+        .then(data => {
+          console.log('📊 Loaded partner monthly data:', data);
+          setBillingData(data);
+        })
+        .catch(error => {
+          console.error('❌ Error fetching partner monthly data:', error);
+          setBillingData([]);
+        });
     }
-  }, [selectedPartner, selectedMonth, activeReport, partners]);
+  }, [selectedPartner, selectedMonth, activeReport]);
 
   useEffect(() => {
     if (selectedPartner && activeReport === 'partnerInfo') {
@@ -119,25 +116,23 @@ const Reporting = () => {
 
   useEffect(() => {
     if (selectedPartner && activeReport === 'partnerAdditional') {
-      const partner = partners.find(p => p.id === parseInt(selectedPartner));
-      if (partner?.id) {
-        console.log('🔄 Fetching additional billings for partner:', partner.id);
-        fetch(`${API_URL}/api/addl-billings/${partner.id}`)
-          .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch additional billings');
-            return response.json();
-          })
-          .then(data => {
-            console.log('💰 Loaded additional billings:', data);
-            setBillingData(data);
-          })
-          .catch(error => {
-            console.error('❌ Error fetching additional billings:', error);
-            setBillingData([]);
-          });
-      }
+      console.log('🔄 Fetching additional billings for partner:', selectedPartner);
+      
+      fetch(`${API_URL}/api/addl-billings/${selectedPartner}`)
+        .then(response => {
+          if (!response.ok) throw new Error('Failed to fetch additional billings');
+          return response.json();
+        })
+        .then(data => {
+          console.log('💰 Loaded additional billings:', data);
+          setBillingData(data);
+        })
+        .catch(error => {
+          console.error('❌ Error fetching additional billings:', error);
+          setBillingData([]);
+        });
     }
-  }, [selectedPartner, activeReport, partners]);
+  }, [selectedPartner, activeReport]);
 
   const handlePartnerChange = (e) => {
     setSelectedPartner(e.target.value);
