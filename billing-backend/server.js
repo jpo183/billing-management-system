@@ -990,6 +990,67 @@ app.get("/test", (req, res) => {
     res.json({ message: "API is working" });
 });
 
+// Add these routes for billing tiers
+app.get("/api/billing-tiers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      "SELECT * FROM billing_tiers WHERE partner_billing_id = $1 ORDER BY tier_min",
+      [id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching billing tiers:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.post("/api/billing-tiers", async (req, res) => {
+  try {
+    const { partner_billing_id, tier_min, tier_max, per_employee_rate } = req.body;
+    const result = await pool.query(
+      `INSERT INTO billing_tiers 
+       (partner_billing_id, tier_min, tier_max, per_employee_rate)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [partner_billing_id, tier_min, tier_max, per_employee_rate]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error creating billing tier:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.put("/api/billing-tiers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tier_min, tier_max, per_employee_rate } = req.body;
+    const result = await pool.query(
+      `UPDATE billing_tiers 
+       SET tier_min = $1, tier_max = $2, per_employee_rate = $3
+       WHERE id = $4 
+       RETURNING *`,
+      [tier_min, tier_max, per_employee_rate, id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error updating billing tier:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.delete("/api/billing-tiers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("DELETE FROM billing_tiers WHERE id = $1", [id]);
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting billing tier:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
