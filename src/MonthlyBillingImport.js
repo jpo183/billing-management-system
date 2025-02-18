@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import "./App.css";
 
+const API_URL = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
+
 const MonthlyBillingImport = () => {
   const [data, setData] = useState([]);
   const [uploadStatus, setUploadStatus] = useState('');
@@ -33,6 +35,8 @@ const MonthlyBillingImport = () => {
       setUploadStatus('Please select a file to upload.');
       return;
     }
+
+    console.log('📂 Processing file:', file.name);
 
     const reader = new FileReader();
 
@@ -147,22 +151,27 @@ const MonthlyBillingImport = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5050/upload-billing', {
+      console.log('📤 Uploading billing data...', {
+        recordCount: data.length,
+        sampleRecord: data[0]
+      });
+
+      const response = await fetch(`${API_URL}/api/upload-billing`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ billingData: data }),
       });
 
-      const result = await response.json();
-      
-      if (response.ok) {
-        setUploadStatus('File uploaded successfully!');
-        console.log('Upload successful:', result);
-      } else {
-        throw new Error(result.message || 'Upload failed');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
       }
+
+      const result = await response.json();
+      console.log('✅ Upload successful:', result);
+      setUploadStatus('File uploaded successfully!');
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('❌ Upload error:', error);
       setUploadStatus(`Upload failed: ${error.message}`);
     }
   };
