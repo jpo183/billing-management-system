@@ -29,7 +29,7 @@ const PartnerBillingSetup = () => {
 const fetchBillingRecords = useCallback(async () => {
   try {
     setIsLoading(true);
-    const billingResponse = await fetch(`http://localhost:5050/api/partner-billing/${partnerId}`);
+    const billingResponse = await fetch(`https://billing-backend-service.onrender.com/api/partner-billing/${partnerId}`);
     const billingData = await billingResponse.json();
 
     // Fetch tiers for per_employee billing types
@@ -37,7 +37,7 @@ const fetchBillingRecords = useCallback(async () => {
       billingData.map(async (record) => {
         if (record.billing_type === "per_employee") {
           try {
-            const tiersResponse = await fetch(`http://localhost:5050/api/billing-tiers/${record.id}`);
+            const tiersResponse = await fetch(`https://billing-backend-service.onrender.com/api/billing-tiers/${record.id}`);
             const tiers = await tiersResponse.json();
             return { ...record, tiers };
           } catch (error) {
@@ -60,8 +60,8 @@ const fetchBillingRecords = useCallback(async () => {
   // Fetch initial data
   useEffect(() => {
     Promise.all([
-      fetch(`http://localhost:5050/api/partners/${partnerId}`).then(res => res.json()),
-      fetch("http://localhost:5050/api/billing-items").then(res => res.json())
+      fetch(`https://billing-backend-service.onrender.com/api/partners/${partnerId}`).then(res => res.json()),
+      fetch("https://billing-backend-service.onrender.com/api/billing-items").then(res => res.json())
     ])
     .then(([partnerData, billingItemsData]) => {
       setPartner(partnerData);
@@ -87,7 +87,7 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
 
 
   if (record.billing_type === "per_employee") {
-    fetch(`http://localhost:5050/api/billing-tiers/${record.id}`)
+    fetch(`https://billing-backend-service.onrender.com/api/billing-tiers/${record.id}`)
       .then((response) => response.json())
       .then((tierData) => setSelectedBillingTiers(tierData))
       .catch((error) => console.error("Error fetching tiers:", error));
@@ -118,14 +118,14 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
 
     let savedBilling;
     if (editingRecord) {
-      const response = await fetch(`http://localhost:5050/api/partner-billing/${editingRecord.id}`, {
+      const response = await fetch(`https://billing-backend-service.onrender.com/api/partner-billing/${editingRecord.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(billingData),
       });
       savedBilling = await response.json();
     } else {
-      const response = await fetch("http://localhost:5050/api/partner-billing", {
+      const response = await fetch("https://billing-backend-service.onrender.com/api/partner-billing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(billingData),
@@ -144,8 +144,8 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
 
         const method = tier.id ? "PUT" : "POST";
         const url = tier.id
-          ? `http://localhost:5050/api/billing-tiers/${tier.id}`
-          : "http://localhost:5050/api/billing-tiers";
+          ? `https://billing-backend-service.onrender.com/api/billing-tiers/${tier.id}`
+          : "https://billing-backend-service.onrender.com/api/billing-tiers";
 
         await fetch(url, {
           method,
@@ -161,7 +161,7 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
 
   const handleDelete = (recordId) => {
     if (!window.confirm("Are you sure you want to delete this billing item?")) return;
-    fetch(`http://localhost:5050/api/partner-billing/${recordId}`, { method: "DELETE" })
+    fetch(`https://billing-backend-service.onrender.com/api/partner-billing/${recordId}`, { method: "DELETE" })
       .then(() => fetchBillingRecords())
       .catch((error) => console.error("Error deleting billing record:", error));
   };
