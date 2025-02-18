@@ -8,14 +8,28 @@ const app = express();
 const port = 5050;
 
 app.use(cors({
-  origin: [
-    'https://billing-system-frontend.onrender.com',
-    'http://localhost:3000'
-  ],
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      'https://billing-system-frontend.onrender.com',
+      'http://localhost:3000'
+    ];
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      return callback(new Error('CORS not allowed'));
+    }
+    
+    return callback(null, true);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
@@ -23,7 +37,8 @@ const multer = require("multer");
 const upload = multer({ limits: { fileSize: 50 * 1024 * 1024 } });
 
 app.use((req, res, next) => {
-  console.log(`📩 Received ${req.method} request to ${req.url}`);
+  console.log('Request origin:', req.headers.origin);
+  console.log('Request method:', req.method);
   next();
 });
 
