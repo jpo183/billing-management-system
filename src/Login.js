@@ -48,7 +48,12 @@ const handleCredentialResponse = async (response) => {
         console.log('Sending to backend...');
         const backendResponse = await axios.post(
             `${process.env.REACT_APP_API_URL}/api/google-auth`,
-            { credential: response.credential }
+            { 
+                credential: response.credential,
+                google_id: decoded.sub,
+                email: decoded.email,
+                name: decoded.name
+            }
         );
 
         console.log('Backend response:', backendResponse.data);
@@ -77,7 +82,11 @@ const handleCredentialResponse = async (response) => {
     } catch (error) {
         console.error('❌ Login error:', error);
         if (error.response) {
-            console.error('❌ Backend error:', error.response.data);
+            console.error('❌ Backend error details:', {
+                status: error.response.status,
+                data: error.response.data,
+                headers: error.response.headers
+            });
         }
     }
 };

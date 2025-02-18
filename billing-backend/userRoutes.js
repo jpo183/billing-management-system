@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
 const { pool } = require("./db");
+const jwt = require("jsonwebtoken");
 
 // Add this connection test
 pool.query('SELECT NOW()', (err, res) => {
@@ -60,6 +61,21 @@ router.post("/register", async (req, res) => {
 // Register/Login with Google
 router.post("/google-auth", async (req, res) => {
     try {
+        console.log("Received Google auth request:", req.body);
+        
+        if (!req.body.credential) {
+            console.error("No credential provided");
+            return res.status(400).json({ error: "No credential provided" });
+        }
+
+        const decoded = jwt.decode(req.body.credential);
+        console.log("Decoded Google token:", decoded);
+
+        if (!decoded || !decoded.email) {
+            console.error("Invalid token");
+            return res.status(400).json({ error: "Invalid token" });
+        }
+
         const { google_id, email, name } = req.body;
         
         // Check if email is in admin whitelist
@@ -97,8 +113,7 @@ router.post("/google-auth", async (req, res) => {
 
         res.status(201).json(newUser.rows[0]);
     } catch (error) {
-        console.error('Google auth error details:', error);
-        console.error('Stack trace:', error.stack);
+        console.error("Google auth error:", error);
         res.status(500).json({ 
             error: error.message,
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
