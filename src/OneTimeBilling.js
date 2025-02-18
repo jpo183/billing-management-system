@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 import "./App.css";
 
-const API_URL = "https://billing-backend-service.onrender.com/api";
+const API_URL = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
 
 const OneTimeBilling = () => {
   const { partnerId } = useParams();
@@ -34,18 +34,28 @@ const OneTimeBilling = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('🔄 Fetching partners and billing items...');
         const [partnersResponse, billingItemsResponse] = await Promise.all([
-          fetch(`${API_URL}/partners`),
-          fetch(`${API_URL}/billing-items`)
+          fetch(`${API_URL}/api/partners?showInactive=false`),
+          fetch(`${API_URL}/api/billing-items`)
         ]);
         
+        if (!partnersResponse.ok || !billingItemsResponse.ok) {
+          throw new Error('Failed to fetch data');
+        }
+
         const partnersData = await partnersResponse.json();
         const billingItemsData = await billingItemsResponse.json();
         
+        console.log('📦 Loaded data:', {
+          partners: partnersData,
+          billingItems: billingItemsData
+        });
+
         setPartners(partnersData);
         setBillingItems(billingItemsData.filter(item => item.is_active));
       } catch (error) {
-        console.error("Error fetching initial data:", error);
+        console.error("❌ Error fetching initial data:", error);
       }
     };
 
@@ -56,11 +66,15 @@ const OneTimeBilling = () => {
   const fetchBillingRecords = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/addl-billings`);
+      console.log('🔄 Fetching billing records...');
+      const response = await fetch(`${API_URL}/api/addl-billings`);
+      if (!response.ok) throw new Error('Failed to fetch billing records');
+      
       const data = await response.json();
+      console.log('📦 Loaded billing records:', data);
       setBillingRecords(data);
     } catch (error) {
-      console.error("Error fetching billing records:", error);
+      console.error("❌ Error fetching billing records:", error);
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +101,8 @@ const OneTimeBilling = () => {
     };
 
     try {
-      const response = await fetch(`${API_URL}/addl-billings`, {
+      console.log('💾 Saving billing record:', newBilling);
+      const response = await fetch(`${API_URL}/api/addl-billings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -109,7 +124,7 @@ const OneTimeBilling = () => {
       setBillingDate("");
       setSelectedPartner("");
     } catch (error) {
-      console.error("Error adding billing record:", error);
+      console.error("❌ Error adding billing record:", error);
       alert("Failed to save billing record. Please try again.");
     }
   };
@@ -155,7 +170,7 @@ const handleEditSubmit = async (event) => {
   };
 
   try {
-    const response = await fetch(`${API_URL}/addl-billings/${editingRecord.id}`, {
+    const response = await fetch(`${API_URL}/api/addl-billings/${editingRecord.id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -183,7 +198,7 @@ const handleDelete = async () => {
   }
 
   try {
-    const deleteUrl = `${API_URL}/addl-billings/${recordToDelete.id}`;
+    const deleteUrl = `${API_URL}/api/addl-billings/${recordToDelete.id}`;
     const response = await fetch(deleteUrl, {
       method: 'DELETE',
       headers: {
