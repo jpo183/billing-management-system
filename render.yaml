@@ -23,10 +23,7 @@ services:
   - type: web
     name: billing-system-frontend
     env: static
-    buildCommand: |
-      npm install
-      npm install xlsx @babel/plugin-proposal-private-property-in-object
-      npm run build
+    buildCommand: CI=false npm run build
     staticPublishPath: ./build
     envVars:
       - key: REACT_APP_API_URL

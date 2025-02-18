@@ -1,144 +1,92 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import "./App.css";
 
 const UserManagement = () => {
     const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const token = localStorage.getItem('token');
-    const currentUserRole = localStorage.getItem('userRole');
-    const navigate = useNavigate();
+    const [error, setError] = useState(null);
+    const apiUrl = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
+
+    // Add this useEffect for environment logging
+    useEffect(() => {
+        console.log('Environment variables:', {
+            NODE_ENV: process.env.NODE_ENV,
+            REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+            apiUrl: apiUrl
+        });
+    }, []);
 
     useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                console.log('Attempting to fetch users from:', apiUrl + '/api/users');
+                const response = await axios.get(`${apiUrl}/api/users`);
+                console.log('Users response:', response.data);
+                setUsers(response.data);
+            } catch (err) {
+                console.error('Error details:', {
+                    message: err.message,
+                    response: err.response?.data,
+                    config: err.config,
+                    url: err.config?.url
+                });
+                setError(err.message);
+            }
+        };
+
         fetchUsers();
     }, []);
 
-    const fetchUsers = async () => {
+    const handleRoleUpdate = async (userId, newRole) => {
         try {
-            const res = await axios.get('http://localhost:5050/api/users', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setUsers(res.data);
-            setLoading(false);
-        } catch (error) {
-            console.error('Error fetching users:', error);
-            setLoading(false);
-        }
-    };
-
-    const updateUserRole = async (id, newRole) => {
-        try {
-            const currentUserEmail = localStorage.getItem("userEmail");
-            const currentUserId = localStorage.getItem("userId");
-            
-            // Prevent users from demoting themselves if they're an admin
-            if (id === currentUserId && localStorage.getItem("userRole") === 'admin' && newRole !== 'admin') {
-                alert("Administrators cannot demote themselves");
-                return;
-            }
-
-            await axios.put(`http://localhost:5050/api/users/${id}/role`, 
-                { role: newRole }, 
-                { headers: { Authorization: `Bearer ${token}` }}
+            const response = await axios.put(
+                `${apiUrl}/api/users/${userId}/role`,
+                { role: newRole }
             );
-            
-            // Update local storage if current user
-            if (users.find(user => user.id === id && user.email === currentUserEmail)) {
-                localStorage.setItem("userRole", newRole);
-            }
-
-            fetchUsers();
-        } catch (error) {
-            console.error('Error updating user role:', error);
-            alert('Failed to update user role');
-        }
-    };
-
-    const deleteUser = async (id) => {
-        try {
-            const currentUserId = localStorage.getItem("userId");
-            
-            // Prevent admin from deleting themselves
-            if (id === currentUserId) {
-                alert("Administrators cannot delete their own account");
-                return;
-            }
-
-            // Ask for confirmation
-            if (!window.confirm("Are you sure you want to delete this user?")) {
-                return;
-            }
-
-            await axios.delete(`http://localhost:5050/api/users/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            
-            fetchUsers(); // Refresh the user list
-            alert("User deleted successfully");
-        } catch (error) {
-            console.error('Error deleting user:', error);
-            alert('Failed to delete user');
+            // Update users list
+            setUsers(users.map(user => 
+                user.id === userId ? response.data : user
+            ));
+        } catch (err) {
+            console.error('Update error:', err);
+            setError(err.message);
         }
     };
 
     return (
-        <div className="billing-container">
+        <div>
             <h2>User Management</h2>
-            <button className="back-button" onClick={() => navigate("/")}>
-                Back to Main Menu
-            </button>
-            
-            {loading ? <p>Loading users...</p> : (
-                <table className="user-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Auth Type</th>
-                            <th>Role</th>
-                            <th>Actions</th>
-                            {currentUserRole === 'admin' && <th>Delete</th>}
+            {error && <div className="error">{error}</div>}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {users.map(user => (
+                        <tr key={user.id}>
+                            <td>{user.name}</td>
+                            <td>{user.email}</td>
+                            <td>{user.role}</td>
+                            <td>
+                                <select 
+                                    value={user.role}
+                                    onChange={(e) => handleRoleUpdate(user.id, e.target.value)}
+                                >
+                                    <option value="user">User</option>
+                                    <option value="billing_manager">Billing Manager</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {users.map(user => (
-                            <tr key={user.id}>
-                                <td>{user.name}</td>
-                                <td>{user.email}</td>
-                                <td>{user.google_id ? 'Google' : 'Regular'}</td>
-                                <td>{user.role}</td>
-                                <td>
-                                    <select 
-                                        value={user.role} 
-                                        onChange={(e) => updateUserRole(user.id, e.target.value)}
-                                        className={`role-select ${user.role}`}
-                                        disabled={user.id === localStorage.getItem("userId") && user.role === 'admin'}
-                                    >
-                                        <option value="admin">Admin</option>
-                                        <option value="billing_manager">Billing Manager</option>
-                                        <option value="user">User</option>
-                                    </select>
-                                </td>
-                                {currentUserRole === 'admin' && (
-                                    <td>
-                                        <button
-                                            onClick={() => deleteUser(user.id)}
-                                            className="delete-button"
-                                            disabled={user.id === localStorage.getItem("userId")}
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
-                                )}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 };
 
-export default UserManagement;
-
+export default UserManagement; 
