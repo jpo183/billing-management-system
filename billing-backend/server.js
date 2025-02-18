@@ -10,23 +10,40 @@ const port = 5050;
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'https://billing-system-frontend.onrender.com');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
-  
-  // Handle preflight requests
+
+  // Handle preflight
   if (req.method === 'OPTIONS') {
-    return res.status(204).send();
+    return res.status(200).end();
   }
   next();
 });
 
-app.use(cors({
-  origin: 'https://billing-system-frontend.onrender.com',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  optionsSuccessStatus: 204
-}));
+app.use((req, res, next) => {
+  console.log('\n🔍 Request Details:', {
+    path: req.path,
+    method: req.method,
+    origin: req.headers.origin,
+    headers: {
+      'access-control-request-headers': req.headers['access-control-request-headers'],
+      'access-control-request-method': req.headers['access-control-request-method'],
+      'content-type': req.headers['content-type']
+    }
+  });
+
+  // Log response headers for CORS
+  res.on('finish', () => {
+    console.log('📤 Response Headers:', {
+      'access-control-allow-origin': res.getHeader('access-control-allow-origin'),
+      'access-control-allow-methods': res.getHeader('access-control-allow-methods'),
+      'access-control-allow-headers': res.getHeader('access-control-allow-headers'),
+      'status': res.statusCode
+    });
+  });
+
+  next();
+});
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -260,6 +277,9 @@ app.put("/api/partners/:id", async (req, res) => {
 
 // BILLING ITEMS ROUTES
 app.get("/api/billing-items", async (req, res) => {
+  console.log('🎯 Accessing billing-items endpoint', {
+    headers: req.headers
+  });
   try {
     console.log("Fetching billing items...");
     const result = await pool.query(
@@ -455,6 +475,10 @@ app.delete("/api/partner-billing/:id", async (req, res) => {
 
 // Fetch a single partner by ID
 app.get("/api/partners/:id", async (req, res) => {
+  console.log('🎯 Accessing partners/:id endpoint', {
+    partnerId: req.params.id,
+    headers: req.headers
+  });
   try {
     const { id } = req.params;
     const result = await pool.query("SELECT * FROM partners WHERE id = $1", [id]);
