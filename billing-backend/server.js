@@ -7,6 +7,19 @@ const userRoutes = require("./userRoutes");
 const app = express();
 const port = 5050;
 
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://billing-system-frontend.onrender.com');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(204).send();
+  }
+  next();
+});
+
 app.use(cors({
   origin: 'https://billing-system-frontend.onrender.com',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
