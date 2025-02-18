@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: billing-system-api
+    env: node
+    buildCommand: cd billing-backend && npm install
+    startCommand: cd billing-backend && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_USER
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_DATABASE
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+
+  - type: web
+    name: billing-system-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://billing-system-api.onrender.com 
