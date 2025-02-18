@@ -8,12 +8,20 @@ const UserManagement = () => {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                console.log('Fetching users from:', `${process.env.REACT_APP_API_URL}/api/users`);
-                const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/users`);
+                console.log('API URL:', process.env.REACT_APP_API_URL); // Debug log
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/users`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
                 console.log('Users response:', response.data);
                 setUsers(response.data);
             } catch (err) {
-                console.error('Error fetching users:', err);
+                console.error('Error details:', {
+                    message: err.message,
+                    response: err.response?.data,
+                    config: err.config
+                });
                 setError(err.message);
             }
         };
@@ -21,16 +29,62 @@ const UserManagement = () => {
         fetchUsers();
     }, []);
 
-    // Update role
-    const response = await axios.put(
-        `${process.env.REACT_APP_API_URL}/api/users/${userId}/role`,
-        { role: newRole }
-    );
+    const handleRoleUpdate = async (userId, newRole) => {
+        try {
+            const response = await axios.put(
+                `${process.env.REACT_APP_API_URL}/api/users/${userId}/role`,
+                { role: newRole },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                }
+            );
+            // Update users list
+            setUsers(users.map(user => 
+                user.id === userId ? response.data : user
+            ));
+        } catch (err) {
+            console.error('Update error:', err);
+            setError(err.message);
+        }
+    };
 
-    // Delete user
-    const response = await axios.delete(
-        `${process.env.REACT_APP_API_URL}/api/users/${userId}`
+    return (
+        <div>
+            <h2>User Management</h2>
+            {error && <div className="error">{error}</div>}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {users.map(user => (
+                        <tr key={user.id}>
+                            <td>{user.name}</td>
+                            <td>{user.email}</td>
+                            <td>{user.role}</td>
+                            <td>
+                                <select 
+                                    value={user.role}
+                                    onChange={(e) => handleRoleUpdate(user.id, e.target.value)}
+                                >
+                                    <option value="user">User</option>
+                                    <option value="billing_manager">Billing Manager</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
     );
+};
 
-    // Rest of your component code...
-}; 
+export default UserManagement; 
