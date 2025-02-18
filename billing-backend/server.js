@@ -1183,16 +1183,29 @@ app.get("/api/monthly-billing/:month", async (req, res) => {
   }
 });
 
-app.get("/api/monthly-billing/partner/:partnerCode/:month", async (req, res) => {
+app.get("/api/monthly-billing/partner/:partnerId/:month", async (req, res) => {
   try {
-    const { partnerCode, month } = req.params;
-    console.log('🔍 Fetching partner monthly billing:', { partnerCode, month });
+    const { partnerId, month } = req.params;
+    console.log('🔍 Fetching partner monthly billing:', { partnerId, month });
     
+    // First get the partner's code
+    const partnerResult = await pool.query(
+      `SELECT partner_code FROM partners WHERE id = $1`,
+      [partnerId]
+    );
+    
+    if (partnerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Partner not found' });
+    }
+    
+    const partnerCode = partnerResult.rows[0].partner_code;
+    console.log('📋 Partner code:', partnerCode);
+    
+    // Then get all monthly billing records where client_code starts with partner_code
     const result = await pool.query(
       `SELECT mb.* 
        FROM monthly_billing mb
-       JOIN partners p ON mb.client_code = p.partner_code 
-       WHERE p.id = $1 
+       WHERE LEFT(mb.client_code, 4) = $1 
        AND TO_CHAR(mb.month_year, 'YYYY-MM') = $2
        ORDER BY mb.client_name`,
       [partnerCode, month]
