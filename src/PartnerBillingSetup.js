@@ -146,30 +146,41 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
         tiers: selectedBillingTiers
       });
 
-      for (const tier of selectedBillingTiers) {
-        const tierData = {
-          partner_billing_id: savedBilling.id,
-          tier_min: parseInt(tier.tier_min),
-          tier_max: parseInt(tier.tier_max),
-          per_employee_rate: parseFloat(tier.per_employee_rate),
-        };
-        console.log('📤 Saving tier:', tierData);
-
-        const method = tier.id ? "PUT" : "POST";
-        const url = tier.id
-          ? `https://billing-system-api-8m6c.onrender.com/api/billing-tiers/${tier.id}`
-          : "https://billing-system-api-8m6c.onrender.com/api/billing-tiers";
-
-        const response = await fetch(url, {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(tierData),
-        });
-        
-        if (!response.ok) {
-          console.error('❌ Failed to save tier:', await response.text());
-          throw new Error('Failed to save tier');
+      try {
+        // Delete existing tiers if editing
+        if (editingRecord) {
+          await fetch(`https://billing-system-api-8m6c.onrender.com/api/billing-tiers/${editingRecord.id}`, {
+            method: 'DELETE'
+          });
         }
+
+        // Save new tiers
+        for (const tier of selectedBillingTiers) {
+          const tierData = {
+            partner_billing_id: savedBilling.id,
+            tier_min: parseInt(tier.tier_min),
+            tier_max: parseInt(tier.tier_max),
+            per_employee_rate: parseFloat(tier.per_employee_rate)
+          };
+
+          console.log('📤 Saving tier:', tierData);
+
+          const response = await fetch('https://billing-system-api-8m6c.onrender.com/api/billing-tiers', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(tierData)
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to save tier');
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error saving tiers:', error);
+        alert('Failed to save tiers');
+        return;
       }
     }
 
