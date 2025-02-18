@@ -141,6 +141,11 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
     }
 
     if (selectedItem.billing_type === "per_employee" && selectedBillingTiers.length > 0) {
+      console.log('📊 Saving tiers for billing item:', {
+        billingId: savedBilling.id,
+        tiers: selectedBillingTiers
+      });
+
       for (const tier of selectedBillingTiers) {
         const tierData = {
           partner_billing_id: savedBilling.id,
@@ -148,17 +153,23 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
           tier_max: parseInt(tier.tier_max),
           per_employee_rate: parseFloat(tier.per_employee_rate),
         };
+        console.log('📤 Saving tier:', tierData);
 
         const method = tier.id ? "PUT" : "POST";
         const url = tier.id
           ? `https://billing-system-api-8m6c.onrender.com/api/billing-tiers/${tier.id}`
           : "https://billing-system-api-8m6c.onrender.com/api/billing-tiers";
 
-        await fetch(url, {
+        const response = await fetch(url, {
           method,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(tierData),
         });
+        
+        if (!response.ok) {
+          console.error('❌ Failed to save tier:', await response.text());
+          throw new Error('Failed to save tier');
+        }
       }
     }
 
