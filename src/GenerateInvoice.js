@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./App.css";
 
+const API_URL = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
+
 const GenerateInvoice = () => {
  const navigate = useNavigate();
  const [partners, setPartners] = useState([]);
@@ -117,328 +119,215 @@ const handleRecurringItemSelect = (id, index) => {  // Add index parameter
 
 
 const handleGenerateInvoice = async () => {
-  const partner = partners.find(p => p.id === parseInt(selectedPartner));
-  if (!partner) {
-    alert('Partner information not found');
-    return;
-  }
-
-  // Calculate total base EIN fees and monthly min billed
-  const selectedClients = monthlyData.filter(item => selectedMonthlyItems.includes(item.client_code));
+  console.group('🔄 Generate Invoice Process');
   
-  const totalBaseEINFeesAcrossClients = selectedClients.reduce((total, item) => {
-    const isActive = item.is_pay_group_active;
-    const baseAmount = isActive ? parseFloat(baseFee?.amount || 0) : 0;
-    const employeeFeeAmount = isActive 
-      ? calculateTieredFee(item.total_active_employees)
-      : 0;
+  try {
+    // 1. Aggregate monthly data
+    const aggregatedMonthlyData = aggregateMonthlyData(monthlyData);
+    console.log('📊 Aggregated monthly data:', aggregatedMonthlyData);
+
+    // 2. Validate all billings
+    const validatedRecurring = recurringPartnerBilling.map(item => 
+      validateRecurringBilling(item, aggregatedMonthlyData)
+    );
     
-    return total + (baseAmount + employeeFeeAmount);
-  }, 0);
-
-  const minFeeAmount = parseFloat(monthlyMinFee?.amount || 0);
-  const monthlyMinBilledTotal = minFeeAmount > totalBaseEINFeesAcrossClients 
-    ? (minFeeAmount - totalBaseEINFeesAcrossClients) 
-    : 0;
-
-  const invoiceData = {
-    partner_id: parseInt(selectedPartner),
-    partner_code: partner.partner_code,
-    partner_name: partner.partner_name,
-    invoice_month: selectedMonth,
-    invoice_date: new Date().toISOString().split('T')[0],
-    monthly_fees: selectedClients.map(item => {
-      const isActive = item.is_pay_group_active;
-      const baseAmount = isActive 
-        ? Number(parseFloat(baseFee?.amount || 0).toFixed(2)) 
-        : 0;
-
-      const totalEmployeeFees = isActive 
-        ? calculateTieredFee(item.total_active_employees)
-        : 0;
-
-      const totalMonthlyFee = Number((baseAmount + totalEmployeeFees).toFixed(2));
-
-      return {
-        client_code: item.client_code,
-        client_name: item.client_name,
-        is_pay_group_active: isActive,
-        total_active_employees: isActive ? item.total_active_employees : 0,
-        base_fee_amount: baseAmount,
-        per_employee_fee_amount: totalEmployeeFees,
-        total_monthly_fee: totalMonthlyFee,
-        partner_id: parseInt(selectedPartner),
-        partner_code: partner.partner_code
-      };
-    }),
-
-    recurring_fees: [
-      // Include monthly minimum fee if applicable
-      ...(monthlyMinBilledTotal > 0 && monthlyMinFee ? [{
-        partner_billing_id: monthlyMinFee.id,
-        partner_id: parseInt(selectedPartner),
-        partner_code: partner.partner_code,
-        client_name: 'Monthly Minimum Fee',
-        item_name: monthlyMinFee.item_name,
-        item_code: monthlyMinFee.item_code || '',
-        billing_item_id: monthlyMinFee.id,
-        original_amount: monthlyMinBilledTotal,
-        invoiced_amount: monthlyMinBilledTotal,
-        override_reason: null,
-        billing_frequency: 'monthly'
-      }] : []),
-
-      // Include selected recurring partner billing items
-...recurringPartnerBilling
-  .filter(item => selectedRecurringItems.includes(item.id))
-  .map(item => {
-    let calculatedAmount;
-    if (item.billing_source === 'client_billing' && item.per_employee_amount) {
-      // Find corresponding monthly data for employee count
-      const monthlyEntry = monthlyData.find(m => m.client_code === item.client_id);
+    // 3. Check for warnings
+    const warnings = validatedRecurring
+      .filter(item => item.hasWarnings)
+      .map(item => `${item.item_name}: ${item.warnings.join(', ')}`);
       
-      if (monthlyEntry) {
-        calculatedAmount = parseFloat(item.base_amount || 0) + 
-          (monthlyEntry.total_active_employees * parseFloat(item.per_employee_amount));
-      } else {
-        calculatedAmount = parseFloat(item.amount || 0);
+    if (warnings.length > 0) {
+      const proceed = window.confirm(
+        `The following warnings were found:\n\n${warnings.join('\n')}\n\nDo you want to proceed?`
+      );
+      if (!proceed) {
+        console.log('❌ User cancelled due to warnings');
+        return;
       }
-    } else {
-      calculatedAmount = parseFloat(item.amount || 0);
     }
 
-    return {
-      partner_billing_id: item.id,
+    // 4. Prepare invoice data with aggregated values
+    const invoiceData = {
       partner_id: parseInt(selectedPartner),
-      partner_code: partner.partner_code,
-      client_name: item.client_name || 'N/A',
-      item_name: item.item_name,
-      item_code: item.item_code || '',
-      billing_item_id: item.billing_item_id,
-      original_amount: calculatedAmount,
-      invoiced_amount: parseFloat(recurringBillingOverrides[item.id] || calculatedAmount),
-      override_reason: recurringOverrideReason[item.id] || null,
-      billing_frequency: item.billing_frequency
+      partner_code: partners.find(p => p.id === parseInt(selectedPartner)).partner_code,
+      partner_name: partners.find(p => p.id === parseInt(selectedPartner)).partner_name,
+      invoice_month: selectedMonth,
+      invoice_date: new Date().toISOString().split('T')[0],
+      monthly_fees: aggregatedMonthlyData
+        .filter(item => selectedMonthlyItems.includes(item.client_code))
+        .map(item => ({
+          client_code: item.client_code,
+          client_name: item.client_name,
+          is_pay_group_active: item.is_pay_group_active,
+          total_active_employees: item.total_active_employees,
+          base_fee_amount: parseFloat(baseFee?.amount || 0),
+          per_employee_fee_amount: calculateTieredFee(item.total_active_employees),
+          total_monthly_fee: calculateTieredFee(item.total_active_employees),
+          partner_id: parseInt(selectedPartner),
+          partner_code: partners.find(p => p.id === parseInt(selectedPartner)).partner_code
+        })),
+
+      recurring_fees: [
+        // Include monthly minimum fee if applicable
+        ...(monthlyMinFee ? [{
+          partner_billing_id: monthlyMinFee.id,
+          partner_id: parseInt(selectedPartner),
+          partner_code: partners.find(p => p.id === parseInt(selectedPartner)).partner_code,
+          client_name: 'Monthly Minimum Fee',
+          item_name: monthlyMinFee.item_name,
+          item_code: monthlyMinFee.item_code || '',
+          billing_item_id: monthlyMinFee.id,
+          original_amount: monthlyMinFee.amount,
+          invoiced_amount: monthlyMinFee.amount,
+          override_reason: null,
+          billing_frequency: 'monthly'
+        }] : []),
+
+        // Include selected recurring partner billing items
+        ...recurringPartnerBilling
+          .filter(item => selectedRecurringItems.includes(item.id))
+          .map(item => {
+            let calculatedAmount;
+            if (item.billing_source === 'client_billing' && item.per_employee_amount) {
+              // Find corresponding monthly data for employee count
+              const monthlyEntry = monthlyData.find(m => m.client_code === item.client_id);
+              
+              if (monthlyEntry) {
+                calculatedAmount = parseFloat(item.base_amount || 0) + 
+                  (monthlyEntry.total_active_employees * parseFloat(item.per_employee_amount));
+              } else {
+                calculatedAmount = parseFloat(item.amount || 0);
+              }
+            } else {
+              calculatedAmount = parseFloat(item.amount || 0);
+            }
+
+            return {
+              partner_billing_id: item.id,
+              partner_id: parseInt(selectedPartner),
+              partner_code: partners.find(p => p.id === parseInt(selectedPartner)).partner_code,
+              client_name: item.client_name || 'N/A',
+              item_name: item.item_name,
+              item_code: item.item_code || '',
+              billing_item_id: item.billing_item_id,
+              original_amount: calculatedAmount,
+              invoiced_amount: parseFloat(recurringBillingOverrides[item.id] || calculatedAmount),
+              override_reason: recurringOverrideReason[item.id] || null,
+              billing_frequency: item.billing_frequency
+            };
+          })
+      ],
+
+      one_time_fees: oneTimeBillings
+        .filter(item => selectedOneTimeItems.includes(item.id))
+        .map(item => ({
+          addl_billing_id: item.id,
+          partner_id: parseInt(selectedPartner),
+          partner_code: partners.find(p => p.id === parseInt(selectedPartner)).partner_code,
+          client_name: item.client_name,
+          item_name: item.item_name,
+          item_code: item.item_code || '',
+          billing_item_id: item.billing_item_id,
+          billing_date: item.billing_date,
+          original_amount: parseFloat(item.amount),
+          invoiced_amount: parseFloat(oneTimeBillingOverrides[item.id] || item.amount),
+          override_reason: oneTimeOverrideReasons[item.id] || null
+        }))
     };
-  })
-    ],
 
-    one_time_fees: oneTimeBillings
-      .filter(item => selectedOneTimeItems.includes(item.id))
-      .map(item => ({
-        addl_billing_id: item.id,
-        partner_id: parseInt(selectedPartner),
-        partner_code: partner.partner_code,
-        client_name: item.client_name,
-        item_name: item.item_name,
-        item_code: item.item_code || '',
-        billing_item_id: item.billing_item_id,
-        billing_date: item.billing_date,
-        original_amount: parseFloat(item.amount),
-        invoiced_amount: parseFloat(oneTimeBillingOverrides[item.id] || item.amount),
-        override_reason: oneTimeOverrideReasons[item.id] || null
-      }))
-  };
+    // 5. Send to backend
+    const response = await fetch(`${API_URL}/api/generate-invoice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(invoiceData)
+    });
 
-try {
-  const missingReasons = [];
-  
-  invoiceData.recurring_fees.forEach(fee => {
-    // Change this check to only require reason if there's a manual override
-    if (recurringBillingOverrides[fee.partner_billing_id] !== undefined && 
-        !fee.override_reason) {
-      missingReasons.push(`Missing override reason for recurring billing item: ${fee.item_name}`);
-    }
-  });
+    if (!response.ok) throw new Error('Failed to generate invoice');
 
-  invoiceData.one_time_fees.forEach(fee => {
-    if (fee.original_amount !== fee.invoiced_amount && !fee.override_reason) {
-      missingReasons.push(`Missing override reason for one-time billing item: ${fee.item_name}`);
-    }
-  });
-
-  if (missingReasons.length > 0) {
-    alert('Please provide reasons for all overridden amounts:\n\n' + missingReasons.join('\n'));
-    return;
+    const result = await response.json();
+    console.log('✅ Invoice generated successfully:', result);
+    
+    // 6. Navigate to review page
+    navigate(`/invoice-review/${result.invoice_id}`);
+  } catch (error) {
+    console.error('❌ Error generating invoice:', error);
+    alert('Failed to generate invoice. Please try again.');
   }
-
-     const response = await fetch('http://localhost:5050/api/generate-invoice', {
-       method: 'POST',
-       headers: {
-         'Content-Type': 'application/json',
-       },
-       body: JSON.stringify(invoiceData)
-     });
-
-     if (!response.ok) {
-       throw new Error('Failed to generate invoice');
-     }
-
-     const result = await response.json();
-     navigate(`/invoice-review/${result.invoice_id}`);
-   } catch (error) {
-     console.error('Error generating invoice:', error);
-     alert('Failed to generate invoice. Please try again.');
-   }
- };
+  
+  console.groupEnd();
+};
 
  useEffect(() => {
-   fetch("http://localhost:5050/api/partners")
-     .then((response) => response.json())
-     .then((data) => setPartners(data))
-     .catch(() => setPartners([]));
+   console.log('🔄 Fetching partners...');
+   fetch(`${API_URL}/api/partners`)
+     .then(response => {
+       if (!response.ok) throw new Error('Failed to fetch partners');
+       return response.json();
+     })
+     .then(data => {
+       console.log('👥 Loaded partners:', data);
+       setPartners(data);
+     })
+     .catch(error => {
+       console.error('❌ Error fetching partners:', error);
+       setPartners([]);
+     });
  }, []);
 
  useEffect(() => {
-   fetch("http://localhost:5050/fetch-distinct-months")
-     .then((response) => response.json())
-     .then((data) => setMonths(data))
-     .catch(() => setMonths([]));
+   console.log('🔄 Fetching months...');
+   fetch(`${API_URL}/api/fetch-distinct-months`)
+     .then(response => {
+       if (!response.ok) throw new Error('Failed to fetch months');
+       return response.json();
+     })
+     .then(data => {
+       console.log('📅 Loaded months:', data);
+       setMonths(data);
+     })
+     .catch(error => {
+       console.error('❌ Error fetching months:', error);
+       setMonths([]);
+     });
  }, []);
 
  useEffect(() => {
   if (selectedPartner && selectedMonth) {
-    const partner = partners.find(p => p.id === parseInt(selectedPartner));
-     
-    if (partner?.partner_code) {
-      fetch(`http://localhost:5050/monthly-billing/partner/${partner.partner_code}/${selectedMonth}`)
-        .then((response) => response.json())
-        .then((data) => setMonthlyData(data.length > 0 ? data : []))
-        .catch((error) => {
-          console.error("Error fetching monthly data:", error);
-          setMonthlyData([]);
-        });
-    }
-
-fetch(`http://localhost:5050/api/partner-billing/${selectedPartner}`)
-  .then((response) => response.json())
-  .then((data) => {
-    console.group('Partner Billing Item Processing');
-    console.log("Raw Partner Billing Data:", data);
+    console.log('🔄 Fetching monthly billing data...', { selectedPartner, selectedMonth });
     
-    const activeItems = data.filter(item => {
-      const isActive = item.is_active === true || item.is_active === 't' || item.is_active === 1;
-      const now = new Date();
-      const startDate = item.start_date ? new Date(item.start_date) : null;
-      const endDate = item.end_date ? new Date(item.end_date) : null;
-
-      const isWithinDateRange = 
-        (!startDate || startDate <= now) && 
-        (!endDate || endDate >= now);
-
-      return isActive && isWithinDateRange;
-    });
-
-    console.log("Detailed Active Items:", activeItems.map(item => ({
-      id: item.id,
-      billing_type: item.billing_type,
-      amount: item.amount,
-      is_active: item.is_active,
-      start_date: item.start_date,
-      end_date: item.end_date
-    })));
-
-  const itemsWithClientNames = activeItems.map(item => ({
-  ...item,
-  client_name: item.billing_source === 'client_billing' ? item.client_name : item.item_name
-}));
-
-    console.log("Items with client names:", itemsWithClientNames);
-
-    const standardItems = itemsWithClientNames.filter(item => 
-      item.billing_type !== 'base_ein' && 
-      item.billing_type !== 'per_employee'
-    );
-
-    console.log("Standard items before setting state:", standardItems.map(item => ({
-      id: item.id,
-      client_name: item.client_name,
-      item_name: item.item_name,
-      amount: item.amount,
-      billing_source: item.billing_source
-    })));
-
-    setRecurringPartnerBilling(standardItems);
-
-        const baseItem = activeItems.find(item => item.billing_type === 'base_ein');
-        if (baseItem) setBaseFee(baseItem);
-
-        const perEmployeeItem = activeItems.find(item => item.billing_type === 'per_employee');
-if (perEmployeeItem) {
-  console.log('Setting Per Employee Fee:', {
-    ...perEmployeeItem,
-    parsedAmount: parseFloat(perEmployeeItem.amount),
-    parsedPerEmployeeAmount: parseFloat(perEmployeeItem.per_employee_amount)
-  });
-  setPerEmployeeFee(perEmployeeItem);
-}
-        const monthlyMinItem = activeItems.find(item => item.billing_type === 'monthly_min');
-        if (monthlyMinItem) {
-          // If multiple monthly min items exist, choose the first one
-          setMonthlyMinFee(monthlyMinItem);
-        }
-
-        // After finding perEmployeeItem
-        if (perEmployeeItem) {
-          setPerEmployeeFee(perEmployeeItem);
-          // Fetch tiers for the per-employee billing item
-          fetch(`http://localhost:5050/api/billing-tiers/${perEmployeeItem.id}`)
-            .then((response) => response.json())
-            .then((tiers) => {
-              // Sort tiers by minimum tier value
-              const sortedTiers = tiers.sort((a, b) => a.tier_min - b.tier_min);
-              setEmployeeTiers(sortedTiers);
-              
-              // Log the sorted tiers for verification
-              console.log('Sorted Employee Tiers:', sortedTiers);
-            })
-            .catch((error) => {
-              console.error('Error fetching employee tiers:', error);
-              setEmployeeTiers([]);
-            });
-        }
-console.log("Final standardItems before setting state:", standardItems.map(item => ({
-  id: item.id,
-  client_name: item.client_name,
-  item_name: item.item_name,
-  amount: item.amount,
-  is_active: item.is_active,
-  billing_source: item.billing_source
-})));
-        setRecurringPartnerBilling(standardItems);
-        
-         console.log('Processed Recurring Billing Data:', standardItems.map(item => ({
-          id: item.id,
-          client_name: item.client_name,
-          billing_source: item.billing_source,
-          item_name: item.item_name
-        })));
-        
-        console.log('All items:', data);
-        console.log('Active items:', activeItems);
-        console.log('Standard items:', standardItems);
-        console.log('Base fee:', baseItem);
-        console.log('Per employee fee:', perEmployeeItem);
+    fetch(`${API_URL}/api/monthly-billing/partner/${selectedPartner}/${selectedMonth}`)
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch monthly billing data');
+        return response.json();
       })
-      .catch((error) => {
-        console.error('Error fetching partner billing items:', error);
-        
-        setRecurringPartnerBilling([]);
-        setBaseFee(null);
-        setPerEmployeeFee(null);
+      .then(data => {
+        console.log('📊 Loaded monthly billing data:', data);
+        setMonthlyData(data.length > 0 ? data : []);
+      })
+      .catch(error => {
+        console.error('❌ Error fetching monthly billing data:', error);
+        setMonthlyData([]);
       });
   }
-}, [selectedPartner, selectedMonth, partners]);
- 
- 
+}, [selectedPartner, selectedMonth]);
 
  useEffect(() => {
    if (selectedPartner && startDate && endDate) {
-   
-     fetch(`http://localhost:5050/api/addl-billings/${selectedPartner}?start_date=${startDate}&end_date=${endDate}`)
-       .then((response) => response.json())
-       .then((data) => setOneTimeBillings(data.length > 0 ? data : []))
-       .catch(() => setOneTimeBillings([]));
+    console.log('🔄 Fetching one-time billings...', { selectedPartner, startDate, endDate });
+    
+    fetch(`${API_URL}/api/addl-billings/${selectedPartner}?start_date=${startDate}&end_date=${endDate}`)
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch one-time billings');
+        return response.json();
+      })
+      .then(data => {
+        console.log('📊 Loaded one-time billings:', data);
+        setOneTimeBillings(data.length > 0 ? data : []);
+      })
+      .catch(error => {
+        console.error('❌ Error fetching one-time billings:', error);
+        setOneTimeBillings([]);
+      });
    }
  }, [selectedPartner, startDate, endDate]);
  
@@ -521,7 +410,61 @@ const calculateTieredFee = (employeeCount) => {
   return totalFee;
 };
 
+// Add new utility functions at the top
+const aggregateMonthlyData = (monthlyData) => {
+  console.log('🔄 Aggregating monthly data...');
+  return monthlyData.reduce((acc, current) => {
+    const existing = acc.find(item => item.client_code === current.client_code);
+    
+    if (existing) {
+      console.log(`📊 Combining records for client ${current.client_code}`);
+      existing.total_active_employees += current.total_active_employees;
+      existing.total_employees_paid += current.total_employees_paid;
+      existing.is_pay_group_active = existing.is_pay_group_active || current.is_pay_group_active;
+      // Keep most recent/relevant data
+      existing.client_name = current.client_name;
+    } else {
+      acc.push({...current});
+    }
+    return acc;
+  }, []);
+};
 
+const validateRecurringBilling = (item, monthlyData) => {
+  const warnings = [];
+  
+  if (item.billing_source === 'client_billing' && item.per_employee_amount) {
+    const monthlyEntry = monthlyData.find(m => m.client_code === item.client_id);
+    if (!monthlyEntry) {
+      warnings.push('Client not found in monthly billing data');
+    } else if (!monthlyEntry.is_pay_group_active) {
+      warnings.push('Client pay group is inactive');
+    }
+  }
+  
+  return {
+    ...item,
+    warnings,
+    hasWarnings: warnings.length > 0
+  };
+};
+
+// Add to your CSS or styled-components
+const styles = {
+  warning: {
+    color: '#f57c00',
+    fontSize: '0.8rem',
+    marginTop: '4px'
+  },
+  override: {
+    backgroundColor: '#fff3e0',
+    border: '1px solid #ffb74d'
+  },
+  aggregated: {
+    backgroundColor: '#e3f2fd',
+    fontWeight: 'bold'
+  }
+};
 
  return (
    <div className="container">
@@ -713,6 +656,7 @@ if (monthlyMinBilledTotal > 0 && partner && monthlyMinFee) {
     </thead>
     <tbody>
 {recurringPartnerBilling.map((row, index) => {
+  const validatedRow = validateRecurringBilling(row, monthlyData);
   const calculatedAmount = row.billing_source === 'client_billing' && row.per_employee_amount
     ? parseFloat(row.base_amount || 0) + (monthlyData.find(m => m.client_code === row.client_id)?.total_active_employees || 0) * parseFloat(row.per_employee_amount || 0)
     : parseFloat(row.amount || 0);
@@ -727,7 +671,7 @@ if (monthlyMinBilledTotal > 0 && partner && monthlyMinFee) {
   const displayClientName = row.client_name ?? 'N/A';
 
   return (
-    <tr key={index}>
+    <tr key={index} className={validatedRow.hasWarnings ? 'warning-row' : ''}>
       <td>
         <input
           type="checkbox"
@@ -761,6 +705,11 @@ if (monthlyMinBilledTotal > 0 && partner && monthlyMinFee) {
       <td>{row.billing_frequency}</td>
       <td>{new Date(row.start_date).toLocaleDateString()}</td>
       <td>{row.end_date ? new Date(row.end_date).toLocaleDateString() : "N/A"}</td>
+      <td>
+        {validatedRow.warnings.map((warning, i) => (
+          <div key={i} style={styles.warning}>⚠️ {warning}</div>
+        ))}
+      </td>
     </tr>
   );
 })}
