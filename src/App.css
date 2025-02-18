@@ -1,0 +1,455 @@
+/* Modern Dark Pink Theme - Core Variables */
+:root {
+  --primary-pink: #ff6b9d;
+  --primary-pink-hover: #ff4785;
+  --light-pink: #ff6b9d20;
+  --dark-bg: #000000;
+  --darker-grey: #1a1a1a;
+  --dark-grey: #2c2c2c;
+  --medium-grey: #404040;
+  --light-grey: #666666;
+  --white: #ffffff;
+  --shadow: 0 2px 4px rgba(255, 107, 157, 0.2);
+  --transition: all 0.3s ease;
+}
+
+body {
+  background-color: var(--dark-bg);
+  color: var(--white);
+  font-family: 'Segoe UI', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+/* Navigation Styles */
+.navigation-container {
+  background-color: var(--darker-grey);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--primary-pink);
+}
+
+.navigation-title {
+  font-size: 1.8rem;
+  color: var(--primary-pink);
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+.nav-button {
+  background-color: var(--white);
+  color: var(--primary-pink);
+  border: 2px solid var(--primary-pink);
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  margin: 0.5rem;
+  border-radius: 8px;
+  transition: var(--transition);
+  font-weight: 500;
+}
+
+.nav-button:hover {
+  background-color: var(--primary-pink);
+  color: var(--white);
+  transform: translateY(-2px);
+}
+
+/* Container Styles */
+.billing-import-container,
+.billing-container {
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: var(--darker-grey);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--primary-pink);
+}
+
+/* Global Table Styles */
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 1.5rem;
+  background: var(--dark-grey);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+th, td {
+  border: 1px solid var(--medium-grey);
+  padding: 1rem;
+  text-align: left;
+  color: var(--white);
+}
+
+th {
+  background: var(--darker-grey);
+  color: var(--primary-pink);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+}
+
+tr:hover {
+  background: var(--medium-grey);
+}
+
+/* Table Inputs */
+table input[type="text"],
+table input[type="number"],
+table input[type="date"],
+table select {
+  background: var(--darker-grey);
+  border: 1px solid var(--medium-grey);
+  color: var(--white);
+  padding: 0.5rem;
+  border-radius: 4px;
+  width: auto;
+  min-width: 100px;
+}
+
+table input[type="checkbox"] {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--primary-pink);
+}
+
+/* Table Actions */
+table button {
+  background: var(--darker-grey);
+  color: var(--primary-pink);
+  border: 1px solid var(--primary-pink);
+  padding: 0.5rem 1rem;
+  margin: 0.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+table button:hover {
+  background: var(--primary-pink);
+  color: var(--white);
+}
+
+table button.delete-button {
+  border-color: #ff4444;
+  color: #ff4444;
+}
+
+table button.delete-button:hover {
+  background: #ff4444;
+  color: var(--white);
+}
+
+/* Specific Table Classes (keeping for backwards compatibility) */
+.billing-table,
+.billing-items-table {
+  /* Inherits all styles from table */
+}
+
+.billing-table tr:hover {
+  background-color: var(--light-pink);
+}
+
+/* Form Elements */
+.file-input {
+  display: block;
+  margin: 1rem auto;
+  padding: 0.5rem;
+  border: 2px dashed var(--primary-pink);
+  border-radius: 8px;
+  background: var(--light-pink);
+  cursor: pointer;
+  width: fit-content;
+}
+
+input[type="number"],
+input[type="text"] {
+  border: 1px solid var(--medium-grey);
+  border-radius: 6px;
+  padding: 0.5rem;
+  transition: var(--transition);
+}
+
+input[type="number"]:focus,
+input[type="text"]:focus {
+  border-color: var(--primary-pink);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
+}
+
+/* Action Buttons */
+.upload-button,
+.submit-button,
+.generate-invoice-button {
+  background-color: var(--primary-pink);
+  color: var(--white);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  margin: 0.5rem;
+  border-radius: 8px;
+  transition: var(--transition);
+  font-weight: 500;
+}
+
+.upload-button:hover,
+.submit-button:hover,
+.generate-invoice-button:hover:not(:disabled) {
+  background-color: var(--primary-pink-hover);
+  transform: translateY(-2px);
+}
+
+.back-button {
+  background-color: var(--medium-grey);
+  color: var(--white);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  transition: var(--transition);
+}
+
+.back-button:hover {
+  background-color: var(--dark-grey);
+  transform: translateY(-2px);
+}
+
+/* Utility Classes */
+.amount-override {
+  background-color: var(--light-pink);
+  border: 1px solid var(--primary-pink);
+}
+
+.required-reason {
+  background-color: #fff0f0;
+  border: 1px solid #ffd7d7;
+}
+
+/* Print Styles */
+@media print {
+  body {
+    background: var(--white);
+    color: var(--dark-grey);
+  }
+
+  .billing-table th,
+  .billing-table td {
+    border-color: var(--dark-grey);
+  }
+
+  .no-print {
+    display: none;
+  }
+
+  /* Add these new styles for table footer */
+  .billing-section table tbody {
+    page-break-inside: auto;
+  }
+
+  .billing-section table tfoot {
+    display: table-row-group;
+  }
+
+  .billing-section table tfoot tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+
+
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .billing-import-container,
+  .billing-container {
+    margin: 1rem;
+    padding: 1rem;
+  }
+
+  .navigation-title {
+    font-size: 1.5rem;
+  }
+
+  .nav-button {
+    width: 100%;
+    margin: 0.5rem 0;
+  }
+
+  .billing-table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+.login-container h1 {
+    margin-bottom: 2rem;
+    color: #333;
+    text-align: center;
+    font-size: 2rem;
+}
+
+.login-container button {
+    margin-top: 1rem;
+}
+
+.error-message {
+    color: #dc3545;
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f8d7da;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.top-right {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: var(--white);
+    color: var(--primary-pink);
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.top-right:hover {
+    background-color: var(--primary-pink);
+    color: var(--white);
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);  /* semi-transparent background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  color: black;
+  padding: 20px;
+  border-radius: 5px;
+  min-width: 300px;
+  max-width: 500px;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.delete-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cancel-button {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tiered-pricing {
+  position: relative;
+  cursor: help;
+}
+
+.tiered-pricing .tooltip {
+  display: none;
+  position: absolute;
+  background: #f9f9f9;
+  color: black;
+  border: 1px solid #ddd;
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 1000;
+  min-width: 200px;
+  
+}
+
+.tiered-pricing:hover .tooltip {
+  display: block;
+  color: black;
+}
+
+/* Add these styles to your existing App.css */
+
+.delete-button {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 5px;
+}
+
+.delete-button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.delete-button:hover:not(:disabled) {
+    background-color: #c82333;
+    transition: background-color 0.2s;
+}
+
+/* You might also want to update your role-select styles */
+.role-select {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+}
+
+.role-select.admin {
+    border-color: #28a745;
+}
+
+.role-select.billing_manager {
+    border-color: #17a2b8;
+}
+
+.role-select.user {
+    border-color: #6c757d;
+}
