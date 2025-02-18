@@ -1083,6 +1083,106 @@ app.delete("/api/billing-tiers/:id", async (req, res) => {
   }
 });
 
+// Add these routes after your existing routes
+
+// GET client billings for a partner
+app.get("/api/client-billings/:partnerId", async (req, res) => {
+  try {
+    console.log('🔍 Fetching client billings for partner:', req.params.partnerId);
+    const result = await pool.query(
+      `SELECT * FROM client_billings 
+       WHERE partner_id = $1 
+       ORDER BY client_name`,
+      [req.params.partnerId]
+    );
+    console.log('✅ Found client billings:', result.rows);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching client billings:', error);
+    res.status(500).json({ error: 'Failed to fetch client billings' });
+  }
+});
+
+// POST new client billing
+app.post("/api/client-billings", async (req, res) => {
+  try {
+    console.log('📝 Creating client billing:', req.body);
+    const {
+      partner_id,
+      client_id,
+      client_name,
+      billing_item_id,
+      billing_date,
+      end_date,
+      base_amount,
+      per_employee_amount,
+      is_active
+    } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO client_billings (
+        partner_id, client_id, client_name, billing_item_id,
+        billing_date, end_date, base_amount, per_employee_amount, is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *`,
+      [partner_id, client_id, client_name, billing_item_id, 
+       billing_date, end_date, base_amount, per_employee_amount, is_active]
+    );
+
+    console.log('✅ Created client billing:', result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creating client billing:', error);
+    res.status(500).json({ error: 'Failed to create client billing' });
+  }
+});
+
+// PUT update client billing
+app.put("/api/client-billings/:id", async (req, res) => {
+  try {
+    console.log('📝 Updating client billing:', req.params.id, req.body);
+    const {
+      client_id,
+      client_name,
+      billing_item_id,
+      billing_date,
+      end_date,
+      base_amount,
+      per_employee_amount,
+      is_active
+    } = req.body;
+
+    const result = await pool.query(
+      `UPDATE client_billings 
+       SET client_id = $1, client_name = $2, billing_item_id = $3,
+           billing_date = $4, end_date = $5, base_amount = $6,
+           per_employee_amount = $7, is_active = $8
+       WHERE id = $9
+       RETURNING *`,
+      [client_id, client_name, billing_item_id, billing_date, 
+       end_date, base_amount, per_employee_amount, is_active, req.params.id]
+    );
+
+    console.log('✅ Updated client billing:', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error updating client billing:', error);
+    res.status(500).json({ error: 'Failed to update client billing' });
+  }
+});
+
+// DELETE client billing
+app.delete("/api/client-billings/:id", async (req, res) => {
+  try {
+    console.log('🗑️ Deleting client billing:', req.params.id);
+    await pool.query('DELETE FROM client_billings WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Error deleting client billing:', error);
+    res.status(500).json({ error: 'Failed to delete client billing' });
+  }
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
