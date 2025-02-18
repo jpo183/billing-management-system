@@ -19,7 +19,7 @@ const ClientBillingSetup = () => {
   const navigate = useNavigate();
 
   const fetchClientBillings = useCallback(() => {
-    fetch(`http://localhost:5050/api/client-billings/${partnerId}`)
+    fetch(`https://billing-backend-service.onrender.com/api/client-billings/${partnerId}`)
       .then(response => response.json())
       .then(data => {
         // Convert dates and ensure boolean values
@@ -35,7 +35,7 @@ const ClientBillingSetup = () => {
   }, [partnerId]);
 
   const fetchBillingItems = useCallback(() => {
-    fetch('http://localhost:5050/api/billing-items')
+    fetch('https://billing-backend-service.onrender.com/api/billing-items')
       .then(response => response.json())
       .then(data => setBillingItems(data.filter(item => item.is_active)))
       .catch(error => console.error('Error fetching billing items:', error));
@@ -60,8 +60,8 @@ const ClientBillingSetup = () => {
     };
 
     const url = editingBilling
-      ? `http://localhost:5050/api/client-billings/${editingBilling.id}`
-      : 'http://localhost:5050/api/client-billings';
+      ? `https://billing-backend-service.onrender.com/api/client-billings/${editingBilling.id}`
+      : 'https://billing-backend-service.onrender.com/api/client-billings';
     const method = editingBilling ? 'PUT' : 'POST';
 
     try {
@@ -97,7 +97,7 @@ const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this billing?')) return;
 
     try {
-      const response = await fetch(`http://localhost:5050/api/client-billings/${id}`, {
+      const response = await fetch(`https://billing-backend-service.onrender.com/api/client-billings/${id}`, {
         method: 'DELETE'
       });
 

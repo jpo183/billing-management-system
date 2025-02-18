@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 import "./App.css";
 
-const API_URL = "http://localhost:5050/api";
+const API_URL = "https://billing-backend-service.onrender.com/api";
 
 const OneTimeBilling = () => {
   const { partnerId } = useParams();
