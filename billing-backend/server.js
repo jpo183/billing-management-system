@@ -506,35 +506,36 @@ app.get("/api/partners/:id", async (req, res) => {
 app.get("/api/partners/:id/details", async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('🔍 Fetching partner details for:', id);
     
-    // Get partner basic info
-    const partnerResult = await pool.query("SELECT * FROM partners WHERE id = $1", [id]);
-
+    const partnerResult = await pool.query(
+      `SELECT * FROM partners WHERE id = $1`,
+      [id]
+    );
+    
     if (partnerResult.rows.length === 0) {
-      return res.status(404).json({ error: "Partner not found" });
+      return res.status(404).json({ error: 'Partner not found' });
     }
-
-    // Get partner billing items
-    const billingItemsResult = await pool.query(`
-      SELECT 
-        pb.*,
-        bi.item_name
-      FROM partner_billings pb
-      JOIN billing_items bi ON pb.billing_item_id = bi.id
-      WHERE pb.partner_id = $1
-      ORDER BY pb.start_date DESC
-    `, [id]);
-
-    // Combine the data
+    
+    const billingItemsResult = await pool.query(
+      `SELECT bi.*, pb.* 
+       FROM partner_billings pb
+       JOIN billing_items bi ON pb.billing_item_id = bi.id
+       WHERE pb.partner_id = $1
+       ORDER BY bi.item_name`,
+      [id]
+    );
+    
     const response = {
       ...partnerResult.rows[0],
       billing_items: billingItemsResult.rows
     };
-
+    
+    console.log('✅ Found partner details');
     res.json(response);
   } catch (error) {
-    console.error("Error fetching partner details:", error);
-    res.status(500).json({ error: "Server error" });
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Failed to fetch partner details' });
   }
 });
 
@@ -1196,6 +1197,86 @@ app.delete("/api/client-billings/:id", async (req, res) => {
   } catch (error) {
     console.error('❌ Error deleting client billing:', error);
     res.status(500).json({ error: 'Failed to delete client billing' });
+  }
+});
+
+// Add these reporting endpoints
+app.get("/api/monthly-billing/:month", async (req, res) => {
+  try {
+    const { month } = req.params;
+    console.log('🔍 Fetching monthly billing for:', month);
+    
+    const result = await pool.query(
+      `SELECT * FROM monthly_billing 
+       WHERE TO_CHAR(month_year, 'YYYY-MM') = $1
+       ORDER BY client_name`,
+      [month]
+    );
+    
+    console.log(`✅ Found ${result.rows.length} records`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Failed to fetch monthly billing data' });
+  }
+});
+
+app.get("/api/monthly-billing/partner/:partnerCode/:month", async (req, res) => {
+  try {
+    const { partnerCode, month } = req.params;
+    console.log('🔍 Fetching partner monthly billing:', { partnerCode, month });
+    
+    const result = await pool.query(
+      `SELECT mb.* 
+       FROM monthly_billing mb
+       JOIN partners p ON mb.client_code = p.partner_code
+       WHERE p.partner_code = $1 
+       AND TO_CHAR(mb.month_year, 'YYYY-MM') = $2
+       ORDER BY mb.client_name`,
+      [partnerCode, month]
+    );
+    
+    console.log(`✅ Found ${result.rows.length} records`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Failed to fetch partner monthly billing data' });
+  }
+});
+
+app.get("/api/partners/:id/details", async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('🔍 Fetching partner details for:', id);
+    
+    const partnerResult = await pool.query(
+      `SELECT * FROM partners WHERE id = $1`,
+      [id]
+    );
+    
+    if (partnerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Partner not found' });
+    }
+    
+    const billingItemsResult = await pool.query(
+      `SELECT bi.*, pb.* 
+       FROM partner_billings pb
+       JOIN billing_items bi ON pb.billing_item_id = bi.id
+       WHERE pb.partner_id = $1
+       ORDER BY bi.item_name`,
+      [id]
+    );
+    
+    const response = {
+      ...partnerResult.rows[0],
+      billing_items: billingItemsResult.rows
+    };
+    
+    console.log('✅ Found partner details');
+    res.json(response);
+  } catch (error) {
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Failed to fetch partner details' });
   }
 });
 

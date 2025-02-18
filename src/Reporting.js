@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import "./App.css";
 
+const API_URL = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
+
 const Reporting = () => {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedPartner, setSelectedPartner] = useState('');
@@ -13,79 +15,119 @@ const Reporting = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("http://localhost:5050/fetch-distinct-months")
-      .then((response) => response.json())
-      .then((data) => setMonths(data))
-      .catch(() => setMonths([]));
+    console.log('🔄 Fetching initial data...');
+    
+    // Fetch months
+    fetch(`${API_URL}/api/fetch-distinct-months`)
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch months');
+        return response.json();
+      })
+      .then(data => {
+        console.log('📅 Loaded months:', data);
+        setMonths(data);
+      })
+      .catch(error => {
+        console.error('❌ Error fetching months:', error);
+        setMonths([]);
+      });
 
-    fetch("http://localhost:5050/api/partners")
-      .then((response) => response.json())
-      .then((data) => setPartners(data))
-      .catch(() => setPartners([]));
+    // Fetch partners
+    fetch(`${API_URL}/api/partners?showInactive=false`)
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch partners');
+        return response.json();
+      })
+      .then(data => {
+        console.log('👥 Loaded partners:', data);
+        setPartners(data);
+      })
+      .catch(error => {
+        console.error('❌ Error fetching partners:', error);
+        setPartners([]);
+      });
   }, []);
 
   useEffect(() => {
     if (selectedMonth && activeReport === 'monthlyData') {
-      fetch(`http://localhost:5050/monthly-billing/${selectedMonth}`)
-        .then((response) => response.json())
-        .then((data) => setBillingData(data))
-        .catch(() => setBillingData([]));
+      console.log('🔄 Fetching monthly data for:', selectedMonth);
+      fetch(`${API_URL}/api/monthly-billing/${selectedMonth}`)
+        .then(response => {
+          if (!response.ok) throw new Error('Failed to fetch monthly data');
+          return response.json();
+        })
+        .then(data => {
+          console.log('📊 Loaded monthly data:', data);
+          setBillingData(data);
+        })
+        .catch(error => {
+          console.error('❌ Error fetching monthly data:', error);
+          setBillingData([]);
+        });
     }
   }, [selectedMonth, activeReport]);
 
   useEffect(() => {
     if (selectedPartner && selectedMonth && activeReport === 'partnerMonthlyData') {
       const partner = partners.find(p => p.id === parseInt(selectedPartner));
-      console.log('Selected partner:', partner);
-      console.log('Selected month:', selectedMonth);
       if (partner?.partner_code) {
-        const url = `http://localhost:5050/monthly-billing/partner/${partner.partner_code}/${selectedMonth}`;
-        console.log('Fetching URL:', url);
-        fetch(url)
+        console.log('🔄 Fetching partner monthly data:', {
+          partner: partner.partner_code,
+          month: selectedMonth
+        });
+
+        fetch(`${API_URL}/api/monthly-billing/partner/${partner.partner_code}/${selectedMonth}`)
           .then(response => {
-            console.log('Response status:', response.status);
+            if (!response.ok) throw new Error('Failed to fetch partner monthly data');
             return response.json();
           })
           .then(data => {
-            console.log('Received data:', data);
+            console.log('📊 Loaded partner monthly data:', data);
             setBillingData(data);
           })
           .catch(error => {
-            console.error('Error:', error);
+            console.error('❌ Error fetching partner monthly data:', error);
             setBillingData([]);
           });
       }
     }
   }, [selectedPartner, selectedMonth, activeReport, partners]);
 
- useEffect(() => {
-  if (selectedPartner && activeReport === 'partnerInfo') {
-    console.log('Fetching partner details for:', selectedPartner);
-    fetch(`http://localhost:5050/api/partners/${selectedPartner}/details`)
-      .then((response) => {
-        console.log('Partner details response:', response.status);
-        return response.json();
-      })
-      .then((data) => {
-        console.log('Partner details data:', data);
-        setPartnerInfo(data);
-      })
-      .catch((error) => {
-        console.error('Error fetching partner details:', error);
-        setPartnerInfo(null);
-      });
-  }
-}, [selectedPartner, activeReport]);
+  useEffect(() => {
+    if (selectedPartner && activeReport === 'partnerInfo') {
+      console.log('🔄 Fetching partner details for:', selectedPartner);
+      fetch(`${API_URL}/api/partners/${selectedPartner}/details`)
+        .then(response => {
+          if (!response.ok) throw new Error('Failed to fetch partner details');
+          return response.json();
+        })
+        .then(data => {
+          console.log('📋 Loaded partner details:', data);
+          setPartnerInfo(data);
+        })
+        .catch(error => {
+          console.error('❌ Error fetching partner details:', error);
+          setPartnerInfo(null);
+        });
+    }
+  }, [selectedPartner, activeReport]);
 
   useEffect(() => {
     if (selectedPartner && activeReport === 'partnerAdditional') {
       const partner = partners.find(p => p.id === parseInt(selectedPartner));
       if (partner?.id) {
-        fetch(`http://localhost:5050/api/addl-billings/${partner.id}`)
-          .then(response => response.json())
-          .then(data => setBillingData(data))
+        console.log('🔄 Fetching additional billings for partner:', partner.id);
+        fetch(`${API_URL}/api/addl-billings/${partner.id}`)
+          .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch additional billings');
+            return response.json();
+          })
+          .then(data => {
+            console.log('💰 Loaded additional billings:', data);
+            setBillingData(data);
+          })
           .catch(error => {
-            console.error('Error:', error);
+            console.error('❌ Error fetching additional billings:', error);
             setBillingData([]);
           });
       }
