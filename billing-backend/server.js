@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { pool } = require("./db"); // Destructure pool from the import
 const path = require('path');
+const userRoutes = require("./userRoutes");
 
 const app = express();
 const port = 5050;
@@ -130,10 +131,6 @@ app.post("/upload-billing", async (req, res) => {
   }
 });
 
-
-
-
-
 // PARTNER ROUTES
 // Update the GET route to include optional active filter
 app.get("/api/partners", async (req, res) => {
@@ -245,9 +242,6 @@ app.get("/api/billing-items", async (req, res) => {
     res.status(500).send("Server Error");
   }
 });
-
-
-
 
 app.post("/api/billing-items", async (req, res) => {
   try {
@@ -366,10 +360,6 @@ app.get("/monthly-billing/partner/:partnerId/:month", async (req, res) => {
   }
 });
 
-
-
-
-
 // Add a new billing entry for a partner
 app.post("/api/partner-billing", async (req, res) => {
   try {
@@ -389,9 +379,6 @@ app.post("/api/partner-billing", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-
-
 
 // Update a billing entry
 app.put("/api/partner-billing/:id", async (req, res) => {
@@ -449,256 +436,40 @@ app.get("/api/partners/:id", async (req, res) => {
     res.status(500).send("Server error");
   }
 });
-// edits billing items in partner billing setup
-app.put("/api/partner-billing/:id", async (req, res) => {
+
+// Endpoint for partner details and billings in reporting page
+app.get("/api/partners/:id/details", async (req, res) => {
   try {
     const { id } = req.params;
-    const { billing_item_id, amount, billing_frequency, start_date, end_date, is_active } = req.body;
+    
+    // Get partner basic info
+    const partnerResult = await pool.query("SELECT * FROM partners WHERE id = $1", [id]);
 
-    const result = await pool.query(
-      "UPDATE partner_billings SET billing_item_id = $1, amount = $2, billing_frequency = $3, start_date = $4, end_date = $5, is_active = $6 WHERE id = $7 RETURNING *",
-      [billing_item_id, amount, billing_frequency, start_date, end_date, is_active, id]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Billing entry not found" });
+    if (partnerResult.rows.length === 0) {
+      return res.status(404).json({ error: "Partner not found" });
     }
 
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error("❌ Error updating partner billing entry:", error);
-    res.status(500).send("Server error");
-  }
-});
-
-// hnadles deltion of billing items in partner setup billing
-app.delete("/api/partner-billing/:id", async (req, res) => {
-  const client = await pool.connect();
-  console.log("🔍 Starting deletion process...");
-  
-  try {
-    await client.query('BEGIN');
-    const { id } = req.params;
-
-    // First verify the billing record exists and get its type
-    const billingCheck = await client.query(`
-      SELECT pb.*, bi.billing_type 
+    // Get partner billing items
+    const billingItemsResult = await pool.query(`
+      SELECT 
+        pb.*,
+        bi.item_name
       FROM partner_billings pb
       JOIN billing_items bi ON pb.billing_item_id = bi.id
-      WHERE pb.id = $1
+      WHERE pb.partner_id = $1
+      ORDER BY pb.start_date DESC
     `, [id]);
-    
-    console.log("📝 Billing record found:", billingCheck.rows[0]);
 
-    // Check for existing tiers
-    const tiersCheck = await client.query(
-      "SELECT * FROM billing_tiers WHERE partner_billing_id = $1",
-      [id]
-    );
-    console.log(`📊 Found ${tiersCheck.rowCount} existing tiers:`, tiersCheck.rows);
+    // Combine the data
+    const response = {
+      ...partnerResult.rows[0],
+      billing_items: billingItemsResult.rows
+    };
 
-    // Delete the billing record (should cascade to tiers)
-    const result = await client.query(
-      "DELETE FROM partner_billings WHERE id = $1 RETURNING *", 
-      [id]
-    );
-    console.log("🗑️ Deletion result:", result.rows[0]);
-
-    // Verify tiers were deleted
-    const postDeleteTiersCheck = await client.query(
-      "SELECT COUNT(*) FROM billing_tiers WHERE partner_billing_id = $1",
-      [id]
-    );
-    console.log("✅ Tiers remaining after delete:", postDeleteTiersCheck.rows[0].count);
-
-    if (result.rowCount === 0) {
-      await client.query('ROLLBACK');
-      console.log("❌ No billing record found to delete");
-      return res.status(404).json({ error: "Billing entry not found" });
-    }
-
-    await client.query('COMMIT');
-    res.json({ 
-      message: "Billing entry and associated tiers deleted successfully",
-      billingDeleted: result.rowCount,
-      initialTierCount: tiersCheck.rowCount,
-      remainingTiers: postDeleteTiersCheck.rows[0].count
-    });
+    res.json(response);
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error("❌ Error during deletion:", error);
-    res.status(500).json({ 
-      error: "Internal Server Error",
-      details: error.message
-    });
-  } finally {
-    client.release();
-    console.log("🏁 Deletion process completed");
-  }
-});
-
-// retrieve monthly billing data for reporting page
-app.get("/monthly-billing/:month", async (req, res) => {
-  try {
-    const { month } = req.params;
-    const result = await pool.query(
-      "SELECT * FROM monthly_billing WHERE TO_CHAR(month_year, 'YYYY-MM') = $1",
-      [month]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    console.error("❌ Error fetching monthly billing:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-// client billing setup routes
-// Add these routes to server.js
-
-// Get all client billings for a partner
-app.get("/api/client-billings/:partnerId", async (req, res) => {
-  try {
-    const { partnerId } = req.params;
-
-    const result = await pool.query(`
-      SELECT cb.*, bi.item_name, bi.item_code
-      FROM client_billings cb
-      JOIN billing_items bi ON cb.billing_item_id = bi.id
-      WHERE cb.partner_id = $1 
-      ORDER BY cb.billing_date DESC`,
-      [partnerId]
-    );
-
-    res.json(result.rows);
-  } catch (error) {
-    console.error("❌ Error fetching client billings:", error);
+    console.error("Error fetching partner details:", error);
     res.status(500).json({ error: "Server error" });
-  }
-});
-
-// Add new client billing
-app.post("/api/client-billings", async (req, res) => {
-  try {
-    const { 
-      partner_id, 
-      client_id, 
-      client_name, 
-      billing_item_id, 
-      billing_date, 
-      end_date,
-      base_amount = 0, 
-      per_employee_amount = 0,
-      is_active = true 
-    } = req.body;
-
-    if (!client_id || !client_name) {
-      return res.status(400).json({ error: "Client ID and Client Name are required" });
-    }
-
-    const result = await pool.query(
-      `INSERT INTO client_billings 
-       (partner_id, client_id, client_name, billing_item_id, billing_date, end_date,
-        base_amount, per_employee_amount, is_active) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-       RETURNING *`,
-      [partner_id, client_id, client_name, billing_item_id, billing_date, end_date,
-       base_amount || 0, per_employee_amount || 0, is_active]
-    );
-
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error("❌ Error adding client billing:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update client billing
-app.put("/api/client-billings/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { 
-      client_id, 
-      client_name, 
-      billing_item_id, 
-      billing_date, 
-      end_date,
-      base_amount, 
-      per_employee_amount,
-      is_active 
-    } = req.body;
-
-    if (!client_id || !client_name) {
-      return res.status(400).json({ error: "Client ID and Client Name are required" });
-    }
-
-    const result = await pool.query(
-      `UPDATE client_billings 
-       SET client_id = $1, 
-           client_name = $2, 
-           billing_item_id = $3, 
-           billing_date = $4, 
-           end_date = $5,
-           base_amount = $6, 
-           per_employee_amount = $7, 
-           is_active = $8,
-           updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $9 
-       RETURNING *`,
-      [client_id, client_name, billing_item_id, billing_date, end_date,
-       base_amount, per_employee_amount, is_active, id]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Billing entry not found" });
-    }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error("❌ Error updating client billing:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// Delete client billing
-app.delete("/api/client-billings/:id", async (req, res) => {
-  const client = await pool.connect();
-  
-  try {
-    await client.query('BEGIN');
-    const { id } = req.params;
-    
-    // Verify the billing record exists
-    const checkRecord = await client.query(
-      "SELECT id FROM client_billings WHERE id = $1",
-      [id]
-    );
-    
-    if (checkRecord.rowCount === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: "Client billing not found" });
-    }
-    
-    // Perform the deletion
-    const result = await client.query(
-      "DELETE FROM client_billings WHERE id = $1 RETURNING *",
-      [id]
-    );
-    
-    await client.query('COMMIT');
-    res.json({ 
-      success: true,
-      message: "Client billing deleted successfully",
-      deletedRecord: result.rows[0]
-    });
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error("Error deleting client billing:", error);
-    res.status(500).json({ 
-      error: "Server error",
-      details: error.message 
-    });
-  } finally {
-    client.release();
   }
 });
 
@@ -925,7 +696,6 @@ app.get("/api/addl-billings", async (req, res) => {
   }
 });
 
-
 // Update a billing record
 app.put("/api/addl-billings/:id", async (req, res) => {
   try {
@@ -1122,10 +892,6 @@ app.post("/api/bulk-addl-billings", async (req, res) => {
       throw new Error(`Validation errors:\n${errors.join('\n')}`);
     }
 
-    // Rest of your code remains the same...
-    
-    
-
     // Insert records
     const insertQuery = `
       INSERT INTO addl_billings 
@@ -1159,527 +925,13 @@ app.post("/api/bulk-addl-billings", async (req, res) => {
   }
 });
 
-// PARTNER BILLING ROUTES
-
-// Get all billing entries for a specific partner  !!! THIS ONE IS MOST LIKELY WRONG!!!
-// app.get("/api/partner-billing/:partnerId", async (req, res) => {
-//  try {
- //   const { partnerId } = req.params;
- //   const result = await pool.query(`
- //     SELECT pb.*, bi.billing_type, bi.item_name
- //     FROM partner_billings pb
- //     JOIN billing_items bi ON pb.billing_item_id = bi.id
- //     WHERE pb.partner_id = $1`,
- //     [partnerId]
- //   );
- //   res.json(result.rows);
-//  } catch (error) {
-//    console.error("Error fetching partner billing entries:", error);
-//    res.status(500).json({ error: "Server error" });
-//  }
-  
-  
-// });
-
-// Keep existing endpoint
-app.get("/api/partners/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query("SELECT * FROM partners WHERE id = $1", [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Partner not found" });
-    }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error("Error fetching partner:", error);
-    res.status(500).send("Server error");
-  }
-});
-
-// Endpoint for partner details and billings in reporting page
-app.get("/api/partners/:id/details", async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // Get partner basic info
-    const partnerResult = await pool.query("SELECT * FROM partners WHERE id = $1", [id]);
-
-    if (partnerResult.rows.length === 0) {
-      return res.status(404).json({ error: "Partner not found" });
-    }
-
-    // Get partner billing items
-    const billingItemsResult = await pool.query(`
-      SELECT 
-        pb.*,
-        bi.item_name
-      FROM partner_billings pb
-      JOIN billing_items bi ON pb.billing_item_id = bi.id
-      WHERE pb.partner_id = $1
-      ORDER BY pb.start_date DESC
-    `, [id]);
-
-    // Combine the data
-    const response = {
-      ...partnerResult.rows[0],
-      billing_items: billingItemsResult.rows
-    };
-
-    res.json(response);
-  } catch (error) {
-    console.error("Error fetching partner details:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// Fetch a single partner with details
-//app.get("/api/partner-billing/:partnerId", async (req, res) => {
- // try {
-  //  const { partnerId } = req.params;
-
-//    const result = await pool.query(`
-//      SELECT 
-//        pb.*, 
-//        bi.billing_type, 
-//        bi.item_name, 
-//        COALESCE(cb.client_name, 'N/A') AS client_name
-//      FROM partner_billings pb
-//      JOIN billing_items bi ON pb.billing_item_id = bi.id
-//     LEFT JOIN client_billings cb ON pb.partner_id = cb.partner_id 
-//        AND pb.billing_item_id = cb.billing_item_id
-//      WHERE pb.partner_id = $1`,
-//      [partnerId]
-//    );
-
-    // 🔍 Log raw query result
-//    console.log(`🔎 Partner ID: ${partnerId}`);
-//    console.log("📄 Raw Query Result from DB:", result.rows);
-
-//    res.json(result.rows);
-//  } catch (error) {
-//    console.error("❌ Error fetching partner billing entries:", error);
-//    res.status(500).json({ error: "Server error", details: error.message });
-//  }
-// });
-
-
-
-app.post("/api/generate-invoice", async (req, res) => {
-  const client = await pool.connect();
-  
-  try {
-    await client.query('BEGIN');
-
-    const {
-      partner_id,
-      partner_code,
-      partner_name,
-      invoice_month,
-      invoice_date,
-      monthly_fees,
-      recurring_fees,
-      one_time_fees
-    } = req.body;
-
-    // Generate invoice number (unique approach)
-    const invoice_number = `INV-${partner_code}-${invoice_month}-${Date.now()}`;
-
-    // Insert invoice master record
-    const masterResult = await client.query(
-      `INSERT INTO invoice_master 
-       (invoice_number, partner_id, partner_code, partner_name, invoice_date, invoice_month, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'draft')
-       RETURNING id`,
-      [
-        invoice_number, 
-        parseInt(partner_id),
-        partner_code, 
-        partner_name, 
-        invoice_date, 
-        invoice_month
-      ]
-    );
-
-    const invoice_id = masterResult.rows[0].id;
-
-    // Insert monthly fees
-    if (monthly_fees?.length > 0) {
-      for (const fee of monthly_fees) {
-        await client.query(
-          `INSERT INTO invoice_monthly_fees 
-            (invoice_id, client_code, client_name, is_pay_group_active, 
-             total_active_employees, base_fee_amount, per_employee_fee_amount, 
-             total_monthly_fee, partner_id, partner_code)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          [
-            invoice_id,
-            fee.client_code,
-            fee.client_name,
-            fee.is_pay_group_active,
-            fee.total_active_employees || 0,
-            fee.base_fee_amount || 0,
-            fee.per_employee_fee_amount || 0,
-            fee.total_monthly_fee || 0,
-            fee.partner_id,
-            fee.partner_code
-          ]
-        );
-      }
-    }
-
-    // Insert recurring fees
-    if (recurring_fees?.length > 0) {
-      for (const fee of recurring_fees) {
-        await client.query(
-          `INSERT INTO invoice_recurring_fees 
-            (invoice_id, partner_billing_id, partner_id, partner_code, 
-             client_name, item_name, item_code, billing_item_id, 
-             original_amount, invoiced_amount, override_reason, billing_frequency)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-          [
-            invoice_id,
-            fee.partner_billing_id || null,
-            fee.partner_id,
-            fee.partner_code,
-            fee.client_name || 'N/A',
-            fee.item_name || '',
-            fee.item_code || '',
-            fee.billing_item_id,
-            fee.original_amount || 0,
-            fee.invoiced_amount || 0,
-            fee.override_reason || null,
-            fee.billing_frequency || 'monthly'
-          ]
-        );
-      }
-    }
-
-    // Insert one-time fees
-    if (one_time_fees?.length > 0) {
-      for (const fee of one_time_fees) {
-        await client.query(
-          `INSERT INTO invoice_one_time_fees 
-            (invoice_id, addl_billing_id, partner_id, partner_code, 
-             client_name, item_name, item_code, billing_item_id, 
-             billing_date, original_amount, invoiced_amount, override_reason)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-          [
-            invoice_id,
-            fee.addl_billing_id || null,
-            fee.partner_id,
-            fee.partner_code,
-            fee.client_name,
-            fee.item_name,
-            fee.item_code || '',
-            fee.billing_item_id,
-            fee.billing_date,
-            fee.original_amount || 0,
-            fee.invoiced_amount || 0,
-            fee.override_reason || null
-          ]
-        );
-      }
-    }
-
-    await client.query('COMMIT');
-    res.json({ 
-      success: true, 
-      invoice_number,
-      invoice_id 
-    });
-
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error generating invoice:', error);
-    res.status(500).json({ 
-      error: "Failed to generate invoice",
-      details: error.message 
-    });
-  } finally {
-    client.release();
-  }
-});
-
-
-
-
-// Get invoice master data
-app.get("/api/invoice/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const result = await pool.query(
-      `SELECT 
-        im.*,
-        (
-          SELECT COALESCE(SUM(total_monthly_fee), 0) 
-          FROM invoice_monthly_fees 
-          WHERE invoice_id = im.id
-        ) AS monthly_total,
-        (
-          SELECT COALESCE(SUM(invoiced_amount), 0) 
-          FROM invoice_recurring_fees 
-          WHERE invoice_id = im.id
-        ) AS recurring_total,
-        (
-          SELECT COALESCE(SUM(invoiced_amount), 0) 
-          FROM invoice_one_time_fees 
-          WHERE invoice_id = im.id
-        ) AS onetime_total,
-        (
-          SELECT COALESCE(SUM(total_monthly_fee), 0) 
-          FROM invoice_monthly_fees 
-          WHERE invoice_id = im.id
-        ) +
-        (
-          SELECT COALESCE(SUM(invoiced_amount), 0) 
-          FROM invoice_recurring_fees 
-          WHERE invoice_id = im.id
-        ) +
-        (
-          SELECT COALESCE(SUM(invoiced_amount), 0) 
-          FROM invoice_one_time_fees 
-          WHERE invoice_id = im.id
-        ) AS grand_total
-      FROM invoice_master im
-      WHERE im.id = $1`,
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Invoice not found" });
-    }
-
-    // Convert to numbers before sending response
-    const invoice = {
-      ...result.rows[0],
-      monthly_total: Number(result.rows[0].monthly_total) || 0,
-      recurring_total: Number(result.rows[0].recurring_total) || 0,
-      onetime_total: Number(result.rows[0].onetime_total) || 0,
-      grand_total: Number(result.rows[0].grand_total) || 0,
-    };
-
-    res.json(invoice);
-  } catch (error) {
-    console.error("Error fetching invoice:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
-
-
-
-// Get monthly billings for invoice
-app.get("/api/invoice/:id/monthly", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query(
-      "SELECT * FROM invoice_monthly_fees WHERE invoice_id = $1",
-      [id]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get recurring billings for invoice
-app.get("/api/invoice/:id/recurring", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query(
-      "SELECT * FROM invoice_recurring_fees WHERE invoice_id = $1",
-      [id]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get one-time billings for invoice
-app.get("/api/invoice/:id/onetime", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query(
-      "SELECT * FROM invoice_one_time_fees WHERE invoice_id = $1",
-      [id]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update invoice status
-app.put("/api/invoice/:id/status", async (req, res) => {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const { id } = req.params;
-    const { status } = req.body;
-
-    if (!['draft', 'final', 'void'].includes(status)) {
-      throw new Error('Invalid status');
-    }
-
-    const result = await client.query(
-      "UPDATE invoice_master SET status = $1 WHERE id = $2 RETURNING *",
-      [status, id]
-    );
-
-    await client.query('COMMIT');
-    res.json(result.rows[0]);
-  } catch (error) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ error: error.message });
-  } finally {
-    client.release();
-  }
-});
-
-//retrieve  invoices
-app.get("/api/invoices/:status", async (req, res) => {
-  try {
-    const { status } = req.params;
-    const result = await pool.query(
-      `SELECT 
-        im.*,
-        (
-          SELECT COALESCE(SUM(total_monthly_fee), 0) 
-          FROM invoice_monthly_fees 
-          WHERE invoice_id = im.id
-        ) AS monthly_total,
-        (
-          SELECT COALESCE(SUM(invoiced_amount), 0) 
-          FROM invoice_recurring_fees 
-          WHERE invoice_id = im.id
-        ) AS recurring_total,
-        (
-          SELECT COALESCE(SUM(invoiced_amount), 0) 
-          FROM invoice_one_time_fees 
-          WHERE invoice_id = im.id
-        ) AS onetime_total,
-        (
-          SELECT COALESCE(SUM(total_monthly_fee), 0) 
-          FROM invoice_monthly_fees 
-          WHERE invoice_id = im.id
-        ) +
-        (
-          SELECT COALESCE(SUM(invoiced_amount), 0) 
-          FROM invoice_recurring_fees 
-          WHERE invoice_id = im.id
-        ) +
-        (
-          SELECT COALESCE(SUM(invoiced_amount), 0) 
-          FROM invoice_one_time_fees 
-          WHERE invoice_id = im.id
-        ) AS grand_total
-      FROM invoice_master im
-      WHERE im.status = $1
-      ORDER BY im.invoice_date DESC`,
-      [status]
-    );
-
-    // Ensure we always return an array, even if empty
-    const invoices = (result.rows || []).map(invoice => ({
-      ...invoice,
-      monthly_total: Number(invoice.monthly_total) || 0,
-      recurring_total: Number(invoice.recurring_total) || 0,
-      onetime_total: Number(invoice.onetime_total) || 0,
-      grand_total: Number(invoice.grand_total) || 0
-    }));
-
-    res.json(invoices);
-  } catch (error) {
-    console.error("Error fetching invoices:", error);
-    res.status(500).json({ error: error.message, invoices: [] });
-  }
-});
-
-// ✅ Fetch tiered pricing for a given partner billing ID
-app.get("/api/billing-tiers/:partnerBillingId", async (req, res) => {
-  try {
-    const { partnerBillingId } = req.params;
-    const result = await pool.query(
-      "SELECT * FROM billing_tiers WHERE partner_billing_id = $1 ORDER BY tier_min ASC",
-      [partnerBillingId]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Error fetching billing tiers:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-// ✅ Create new tiered pricing for a partner billing item
-app.post("/api/billing-tiers", async (req, res) => {
-  try {
-    const { partner_billing_id, tier_min, tier_max, per_employee_rate } = req.body;
-    
-    const result = await pool.query(
-      "INSERT INTO billing_tiers (partner_billing_id, tier_min, tier_max, per_employee_rate) VALUES ($1, $2, $3, $4) RETURNING *",
-      [partner_billing_id, tier_min, tier_max, per_employee_rate]
-    );
-
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error("Error creating billing tier:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-// ✅ Update an existing tier
-app.put("/api/billing-tiers/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { tier_min, tier_max, per_employee_rate } = req.body;
-
-    const result = await pool.query(
-      "UPDATE billing_tiers SET tier_min = $1, tier_max = $2, per_employee_rate = $3 WHERE id = $4 RETURNING *",
-      [tier_min, tier_max, per_employee_rate, id]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Tier not found" });
-    }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error("Error updating billing tier:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-// ✅ Delete a tier
-app.delete("/api/billing-tiers/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const result = await pool.query(
-      "DELETE FROM billing_tiers WHERE id = $1 RETURNING *",
-      [id]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Tier not found" });
-    }
-
-    res.json({ message: "Tier deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting billing tier:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
 //user routes
-const userRoutes = require("./userRoutes");
 app.use("/api", userRoutes);
 
-
+// Test route
+app.get("/test", (req, res) => {
+    res.json({ message: "API is working" });
+});
 
 // Start server
 app.listen(port, () => {

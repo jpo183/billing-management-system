@@ -13,6 +13,12 @@ pool.query('SELECT NOW()', (err, res) => {
     }
 });
 
+// At the top of your routes
+router.use((req, res, next) => {
+    console.log(`User route: ${req.method} ${req.path}`);
+    next();
+});
+
 // Get all users
 router.get("/users", async (req, res) => {
     try {
