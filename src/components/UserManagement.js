@@ -8,12 +8,8 @@ const UserManagement = () => {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                console.log('API URL:', process.env.REACT_APP_API_URL); // Debug log
-                const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/users`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
-                });
+                console.log('API URL:', process.env.REACT_APP_API_URL);
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/users`);
                 console.log('Users response:', response.data);
                 setUsers(response.data);
             } catch (err) {

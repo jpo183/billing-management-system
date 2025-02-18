@@ -16,11 +16,14 @@ pool.query('SELECT NOW()', (err, res) => {
 // Get all users
 router.get("/users", async (req, res) => {
     try {
+        console.log("GET /users endpoint hit");
         const result = await pool.query(
             "SELECT id, name, email, role, google_id FROM users ORDER BY name"
         );
+        console.log("Users found:", result.rows);
         res.json(result.rows);
     } catch (err) {
+        console.error("Error in GET /users:", err);
         res.status(500).json({ error: err.message });
     }
 });
