@@ -23,8 +23,11 @@ services:
   - type: web
     name: billing-system-frontend
     env: static
-    buildCommand: npm install && npm run build
+    buildCommand: |
+      npm install
+      npm install xlsx @babel/plugin-proposal-private-property-in-object
+      npm run build
     staticPublishPath: ./build
     envVars:
       - key: REACT_APP_API_URL
-        value: https://billing-system-api.onrender.com 
+        value: https://billing-system-api-8m6c.onrender.com 
