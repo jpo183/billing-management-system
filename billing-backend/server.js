@@ -8,25 +8,10 @@ const app = express();
 const port = 5050;
 
 app.use(cors({
-  origin: function(origin, callback) {
-    const allowedOrigins = [
-      'https://billing-system-frontend.onrender.com',
-      'http://localhost:3000'
-    ];
-    
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) === -1) {
-      return callback(new Error('CORS not allowed'));
-    }
-    
-    return callback(null, true);
-  },
+  origin: 'https://billing-system-frontend.onrender.com',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  preflightContinue: false,
   optionsSuccessStatus: 204
 }));
 
