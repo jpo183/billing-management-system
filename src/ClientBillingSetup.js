@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import "./App.css";
 
+console.log('🔍 API_URL:', process.env.REACT_APP_API_URL);
+
 const ClientBillingSetup = () => {
   const [billings, setBillings] = useState([]);
   const [billingItems, setBillingItems] = useState([]);
@@ -19,26 +21,36 @@ const ClientBillingSetup = () => {
   const navigate = useNavigate();
 
   const fetchClientBillings = useCallback(() => {
-    fetch(`https://billing-backend-service.onrender.com/api/client-billings/${partnerId}`)
-      .then(response => response.json())
-      .then(data => {
-        // Convert dates and ensure boolean values
-        const processedData = data.map(billing => ({
-          ...billing,
-          billing_date: billing.billing_date.split('T')[0],
-          end_date: billing.end_date ? billing.end_date.split('T')[0] : '',
-          is_active: billing.is_active === true || billing.is_active === 't'
-        }));
-        setBillings(processedData);
-      })
-      .catch(error => console.error('Error fetching client billings:', error));
+    try {
+      console.log('📡 Fetching from:', `${process.env.REACT_APP_API_URL}/api/client-billings/${partnerId}`);
+      fetch(`${process.env.REACT_APP_API_URL}/api/client-billings/${partnerId}`)
+        .then(response => response.json())
+        .then(data => {
+          // Convert dates and ensure boolean values
+          const processedData = data.map(billing => ({
+            ...billing,
+            billing_date: billing.billing_date.split('T')[0],
+            end_date: billing.end_date ? billing.end_date.split('T')[0] : '',
+            is_active: billing.is_active === true || billing.is_active === 't'
+          }));
+          setBillings(processedData);
+        })
+        .catch(error => console.error('Error fetching client billings:', error));
+    } catch (error) {
+      console.error('❌ Fetch error:', error);
+    }
   }, [partnerId]);
 
   const fetchBillingItems = useCallback(() => {
-    fetch('https://billing-backend-service.onrender.com/api/billing-items')
-      .then(response => response.json())
-      .then(data => setBillingItems(data.filter(item => item.is_active)))
-      .catch(error => console.error('Error fetching billing items:', error));
+    try {
+      console.log('📡 Fetching billing items from:', `${process.env.REACT_APP_API_URL}/api/billing-items`);
+      fetch(`${process.env.REACT_APP_API_URL}/api/billing-items`)
+        .then(response => response.json())
+        .then(data => setBillingItems(data.filter(item => item.is_active)))
+        .catch(error => console.error('Error fetching billing items:', error));
+    } catch (error) {
+      console.error('❌ Fetch error:', error);
+    }
   }, []);
 
   useEffect(() => {
@@ -60,8 +72,8 @@ const ClientBillingSetup = () => {
     };
 
     const url = editingBilling
-      ? `https://billing-backend-service.onrender.com/api/client-billings/${editingBilling.id}`
-      : 'https://billing-backend-service.onrender.com/api/client-billings';
+      ? `${process.env.REACT_APP_API_URL}/api/client-billings/${editingBilling.id}`
+      : `${process.env.REACT_APP_API_URL}/api/client-billings`;
     const method = editingBilling ? 'PUT' : 'POST';
 
     try {
@@ -97,7 +109,7 @@ const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this billing?')) return;
 
     try {
-      const response = await fetch(`https://billing-backend-service.onrender.com/api/client-billings/${id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/client-billings/${id}`, {
         method: 'DELETE'
       });
 
