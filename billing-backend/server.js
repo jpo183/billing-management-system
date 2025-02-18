@@ -277,22 +277,16 @@ app.put("/api/partners/:id", async (req, res) => {
 
 // BILLING ITEMS ROUTES
 app.get("/api/billing-items", async (req, res) => {
-  console.log('🎯 Accessing billing-items endpoint', {
-    headers: req.headers
-  });
   try {
-    console.log("Fetching billing items...");
+    console.log("🔍 Fetching billing items...");
     const result = await pool.query(
-      "SELECT id, item_code, item_name, description, is_active, billing_type FROM billing_items ORDER BY id"
+      "SELECT * FROM billing_items WHERE is_active = true ORDER BY item_name"
     );
-    console.log("Found items:", result.rows);
+    console.log("✅ Found items:", result.rows);
     res.json(result.rows);
-  } catch (err) {
-    console.error("Error in billing items:", err);
-    res.status(500).json({ 
-      error: err.message,
-      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
-    });
+  } catch (error) {
+    console.error("❌ Error fetching billing items:", error);
+    res.status(500).json({ error: "Failed to fetch billing items" });
   }
 });
 

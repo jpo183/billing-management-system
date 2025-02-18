@@ -59,17 +59,31 @@ const fetchBillingRecords = useCallback(async () => {
 
   // Fetch initial data
   useEffect(() => {
+    console.log('🔄 Fetching initial data...');
+    
     Promise.all([
-      fetch(`https://billing-system-api-8m6c.onrender.com/api/partners/${partnerId}`).then(res => res.json()),
-      fetch("https://billing-system-api-8m6c.onrender.com/api/billing-items").then(res => res.json())
+      fetch(`https://billing-system-api-8m6c.onrender.com/api/partners/${partnerId}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch partner');
+          return res.json();
+        }),
+      fetch("https://billing-system-api-8m6c.onrender.com/api/billing-items")
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch billing items');
+          return res.json();
+        })
     ])
     .then(([partnerData, billingItemsData]) => {
+      console.log('📦 Loaded data:', {
+        partner: partnerData,
+        billingItems: billingItemsData
+      });
       setPartner(partnerData);
       setBillingItems(billingItemsData);
       fetchBillingRecords();
     })
     .catch((error) => {
-      console.error("Error fetching initial data:", error);
+      console.error("❌ Error fetching initial data:", error);
       setIsLoading(false);
     });
   }, [partnerId, fetchBillingRecords]);
@@ -157,13 +171,13 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
         // Save new tiers
         for (const tier of selectedBillingTiers) {
           const tierData = {
-            partner_billing_id: savedBilling.id,
+            partner_billing_id: parseInt(savedBilling.id),
             tier_min: parseInt(tier.tier_min),
             tier_max: parseInt(tier.tier_max),
             per_employee_rate: parseFloat(tier.per_employee_rate)
           };
 
-          console.log('📤 Saving tier:', tierData);
+          console.log('📤 Saving tier with parsed numbers:', tierData);
 
           const response = await fetch('https://billing-system-api-8m6c.onrender.com/api/billing-tiers', {
             method: 'POST',
@@ -216,15 +230,18 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
       <div className="billing-form">
         <h3>{editingRecord ? "Edit Billing Item" : "Add Billing Item"}</h3>
 
-          <select value={selectedBillingItem} onChange={(e) => setSelectedBillingItem(e.target.value)}>
-          <option value="">-- Select an Item --</option>
-          {billingItems
-            .filter(item => item.is_active) // Only show active billing items
-            .map((item) => (
-              <option key={item.id} value={item.id}>{item.item_name}</option>
-            ))
-          }
-        </select>
+          <select 
+            value={selectedBillingItem} 
+            onChange={(e) => setSelectedBillingItem(e.target.value)}
+            className="w-full p-2 border rounded"
+          >
+            <option value="">-- Select an Item --</option>
+            {billingItems.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.item_name} ({item.billing_type})
+              </option>
+            ))}
+          </select>
 
         {selectedBillingItem && billingItems.find((item) => item.id.toString() === selectedBillingItem)?.billing_type === "per_employee" && (
           <TieredPricing tiers={selectedBillingTiers} onTierChange={setSelectedBillingTiers} editingBillingId={editingRecord?.id} />
