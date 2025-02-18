@@ -25,14 +25,30 @@ const TieredPricing = ({ tiers, onTierChange, editingBillingId = null }) => {
   };
 
   const handleAddTier = async () => {
+    // Log initial state
+    console.log('🏁 Starting handleAddTier:', {
+      newTier,
+      editingBillingId,
+      existingTiers: tiers
+    });
+
     if (!newTier.tier_min || !newTier.tier_max || !newTier.per_employee_rate) {
+      console.warn('❌ Missing required fields:', newTier);
       alert("Please fill in all tier fields");
       return;
     }
 
-    console.log('Adding tier:', {
-      newTier,
-      editingBillingId
+    const requestBody = {
+      partner_billing_id: editingBillingId,
+      tier_min: parseInt(newTier.tier_min),
+      tier_max: parseInt(newTier.tier_max),
+      per_employee_rate: parseFloat(newTier.per_employee_rate)
+    };
+
+    console.log('📤 Sending request:', {
+      url: 'https://billing-system-api-8m6c.onrender.com/api/billing-tiers',
+      method: 'POST',
+      body: requestBody
     });
 
     try {
@@ -41,27 +57,29 @@ const TieredPricing = ({ tiers, onTierChange, editingBillingId = null }) => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          partner_billing_id: editingBillingId,
-          tier_min: parseInt(newTier.tier_min),
-          tier_max: parseInt(newTier.tier_max),
-          per_employee_rate: parseFloat(newTier.per_employee_rate)
-        })
+        body: JSON.stringify(requestBody)
       });
 
+      console.log('📥 Response status:', response.status);
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response error:', errorText);
         throw new Error('Failed to save tier');
       }
 
       const savedTier = await response.json();
+      console.log('✅ Saved tier:', savedTier);
       
       const updatedTiers = [...tiers, savedTier];
+      console.log('📊 Updated tiers:', updatedTiers);
+      
       onTierChange(updatedTiers);
       setNewTier({ tier_min: "", tier_max: "", per_employee_rate: "" });
       setTierErrors([]);
     } catch (error) {
-      console.error('Error saving tier:', error);
-      alert('Failed to save tier');
+      console.error('❌ Error saving tier:', error);
+      alert('Failed to save tier: ' + error.message);
     }
   };
 
