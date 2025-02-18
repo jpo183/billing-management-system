@@ -5,11 +5,13 @@ const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [error, setError] = useState(null);
 
+    const API_URL = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
+
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                console.log('API URL:', process.env.REACT_APP_API_URL);
-                const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/users`);
+                console.log('Using API URL:', API_URL);
+                const response = await axios.get(`${API_URL}/api/users`);
                 console.log('Users response:', response.data);
                 setUsers(response.data);
             } catch (err) {
@@ -28,7 +30,7 @@ const UserManagement = () => {
     const handleRoleUpdate = async (userId, newRole) => {
         try {
             const response = await axios.put(
-                `${process.env.REACT_APP_API_URL}/api/users/${userId}/role`,
+                `${API_URL}/api/users/${userId}/role`,
                 { role: newRole },
                 {
                     headers: {
