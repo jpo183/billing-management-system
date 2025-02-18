@@ -4,21 +4,29 @@ import axios from 'axios';
 const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [error, setError] = useState(null);
+    const apiUrl = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
 
-    const API_URL = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
+    // Log environment variables on component mount
+    useEffect(() => {
+        console.log('Environment:', {
+            NODE_ENV: process.env.NODE_ENV,
+            API_URL: apiUrl
+        });
+    }, []);
 
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                console.log('Using API URL:', API_URL);
-                const response = await axios.get(`${API_URL}/api/users`);
+                console.log('Attempting to fetch users from:', apiUrl);
+                const response = await axios.get(`${apiUrl}/api/users`);
                 console.log('Users response:', response.data);
                 setUsers(response.data);
             } catch (err) {
                 console.error('Error details:', {
                     message: err.message,
                     response: err.response?.data,
-                    config: err.config
+                    config: err.config,
+                    url: err.config?.url
                 });
                 setError(err.message);
             }
@@ -30,13 +38,8 @@ const UserManagement = () => {
     const handleRoleUpdate = async (userId, newRole) => {
         try {
             const response = await axios.put(
-                `${API_URL}/api/users/${userId}/role`,
-                { role: newRole },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
-                }
+                `${apiUrl}/api/users/${userId}/role`,
+                { role: newRole }
             );
             // Update users list
             setUsers(users.map(user => 
