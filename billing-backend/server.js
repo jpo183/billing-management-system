@@ -67,13 +67,22 @@ app.post("/upload", upload.single("file"), (req, res) => {
   }
 });
 
-app.get("/fetch-distinct-months", async (req, res) => {
+app.get("/api/fetch-distinct-months", async (req, res) => {
   try {
-    const result = await pool.query("SELECT DISTINCT TO_CHAR(month_year, 'YYYY-MM') AS month_year FROM monthly_billing ORDER BY month_year DESC");
-    res.json(result.rows.map(row => row.month_year));
+    console.log('🔍 Fetching distinct months...');
+    
+    const result = await pool.query(`
+      SELECT DISTINCT TO_CHAR(month_year, 'YYYY-MM') AS month_year 
+      FROM monthly_billing 
+      ORDER BY month_year DESC
+    `);
+    
+    const months = result.rows.map(row => row.month_year);
+    console.log('📅 Found months:', months);
+    res.json(months);
   } catch (error) {
-    console.error("❌ Error fetching distinct months:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('❌ Error fetching distinct months:', error);
+    res.status(500).json({ error: 'Failed to fetch months' });
   }
 });
 

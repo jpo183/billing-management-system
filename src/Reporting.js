@@ -25,6 +25,11 @@ const Reporting = () => {
       })
       .then(data => {
         console.log('📅 Loaded months:', data);
+        if (!Array.isArray(data)) {
+          console.error('❌ Invalid months data:', data);
+          setMonths([]);
+          return;
+        }
         setMonths(data);
       })
       .catch(error => {
