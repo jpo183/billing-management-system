@@ -1006,44 +1006,57 @@ app.get("/api/billing-tiers/:id", async (req, res) => {
 });
 
 app.post("/api/billing-tiers", async (req, res) => {
-  console.log('🎯 POST /api/billing-tiers received:', {
-    body: req.body,
-    headers: req.headers
-  });
-
-  try {
-    const { partner_billing_id, tier_min, tier_max, per_employee_rate } = req.body;
-    
-    // Validate required fields
-    if (!partner_billing_id || !tier_min || !tier_max || !per_employee_rate) {
-      console.warn('❌ Missing required fields:', { partner_billing_id, tier_min, tier_max, per_employee_rate });
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    console.log('📝 Executing query with values:', {
+  console.log('🎯 Validating tier data:', req.body);
+  
+  const { partner_billing_id, tier_min, tier_max, per_employee_rate } = req.body;
+  
+  // Check if all required fields are present and valid
+  if (!partner_billing_id || 
+      tier_min === undefined || tier_min === null || // Allow 0
+      tier_max === undefined || tier_max === null ||
+      per_employee_rate === undefined || per_employee_rate === null) {
+    console.error('❌ Missing or invalid fields:', {
       partner_billing_id,
       tier_min,
       tier_max,
-      per_employee_rate
+      per_employee_rate,
+      types: {
+        tier_min: typeof tier_min,
+        tier_max: typeof tier_max,
+        per_employee_rate: typeof per_employee_rate
+      }
+    });
+    return res.status(400).json({ error: 'Missing or invalid fields' });
+  }
+
+  // Validate numeric values
+  if (tier_max <= tier_min) {
+    return res.status(400).json({ error: 'Max tier must be greater than min tier' });
+  }
+
+  if (per_employee_rate < 0) {
+    return res.status(400).json({ error: 'Rate cannot be negative' });
+  }
+
+  try {
+    const query = `
+      INSERT INTO billing_tiers 
+      (partner_billing_id, tier_min, tier_max, per_employee_rate)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `;
+    const values = [partner_billing_id, tier_min, tier_max, per_employee_rate];
+    
+    console.log('📝 Executing query:', {
+      query,
+      values
     });
 
-    const result = await pool.query(
-      `INSERT INTO billing_tiers 
-       (partner_billing_id, tier_min, tier_max, per_employee_rate)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [partner_billing_id, tier_min, tier_max, per_employee_rate]
-    );
-
-    console.log('✅ Query result:', result.rows[0]);
-    res.status(201).json(result.rows[0]);
+    const result = await pool.query(query, values);
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('❌ Error creating billing tier:', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code
-    });
-    res.status(500).json({ error: "Server error", details: error.message });
+    console.error('❌ Database error:', error);
+    res.status(500).json({ error: 'Failed to create tier' });
   }
 });
 
