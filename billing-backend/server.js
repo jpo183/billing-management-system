@@ -77,53 +77,65 @@ app.get("/fetch-distinct-months", async (req, res) => {
   }
 });
 
-app.post("/upload-billing", async (req, res) => {
+app.post("/api/upload-billing", async (req, res) => {
   try {
+    console.log('📊 Processing monthly billing upload');
     const { billingData } = req.body;
 
     if (!billingData?.length) {
+      console.error('❌ No billing data received');
       return res.status(400).json({ error: "No billing data received" });
     }
 
-    const validColumns = [
-      "month_year", "client_code", "client_name", "legal_company_code", "legal_name",
-      "fein", "state_code", "total_employees_paid", "total_billing",
-      "total_one_time_billing", "pay_group_name", "is_pay_group_active",
-      "new_pay_group_count", "live_payroll_count", "total_active_employees", 
-      "total_checks_and_vouchers"
-    ];
-
-    console.log("🔍 Records received:", billingData.length);
+    console.log(`🔍 Processing ${billingData.length} records...`);
+    console.log('📋 Sample record:', billingData[0]);
 
     await pool.query('BEGIN');
 
-    // First, ensure staging table exists and has no constraints
+    // Create staging table
     await pool.query(`
       DROP TABLE IF EXISTS monthly_billing_staging;
       CREATE TABLE monthly_billing_staging (LIKE monthly_billing INCLUDING ALL);
       ALTER TABLE monthly_billing_staging DROP CONSTRAINT IF EXISTS monthly_billing_staging_month_year_client_code_key;
     `);
 
-    // Insert into staging
-    const stagingColumnNames = validColumns.join(", ");
-    const stagingPlaceholders = validColumns.map((_, i) => `$${i + 1}`).join(", ");
-    const stagingQuery = `
-      INSERT INTO monthly_billing_staging (${stagingColumnNames}) 
-      VALUES (${stagingPlaceholders})
-    `;
-
-    for (const entry of billingData) {
-      const values = validColumns.map(col => entry[col] !== undefined ? entry[col] : null);
-      await pool.query(stagingQuery, values);
+    // Insert data into staging
+    for (const record of billingData) {
+      await pool.query(`
+        INSERT INTO monthly_billing_staging (
+          month_year, client_code, client_name, legal_company_code, legal_name,
+          fein, state_code, total_employees_paid, total_billing,
+          total_one_time_billing, pay_group_name, is_pay_group_active,
+          new_pay_group_count, live_payroll_count, total_active_employees, 
+          total_checks_and_vouchers
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      `, [
+        record.month_year,
+        record.client_code,
+        record.client_name,
+        record.legal_company_code,
+        record.legal_name,
+        record.fein,
+        record.state_code,
+        record.total_employees_paid,
+        record.total_billing,
+        record.total_one_time_billing,
+        record.pay_group_name,
+        record.is_pay_group_active,
+        record.new_pay_group_count,
+        record.live_payroll_count,
+        record.total_active_employees,
+        record.total_checks_and_vouchers
+      ]);
     }
 
-    // Clear main table for the month being imported
+    // Clear existing data for the month
     await pool.query(`
       DELETE FROM monthly_billing 
       WHERE month_year = (SELECT month_year FROM monthly_billing_staging LIMIT 1)
     `);
 
-    // Aggregate and insert into main table
+    // Insert aggregated data
     await pool.query(`
       INSERT INTO monthly_billing (
         month_year, client_code, client_name, legal_company_code, legal_name,
@@ -155,11 +167,13 @@ app.post("/upload-billing", async (req, res) => {
 
     await pool.query('DROP TABLE monthly_billing_staging');
     await pool.query('COMMIT');
+
+    console.log('✅ Upload completed successfully');
     res.status(201).json({ message: "Billing data uploaded successfully" });
 
   } catch (error) {
     await pool.query('ROLLBACK');
-    console.error("❌ Error uploading billing data:", error);
+    console.error('❌ Error uploading billing data:', error);
     res.status(500).json({ error: error.message });
   }
 });
