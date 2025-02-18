@@ -24,91 +24,52 @@ const TieredPricing = ({ tiers, onTierChange, editingBillingId = null }) => {
     return errors;
   };
 
-  const handleAddTier = async () => {
-    // Log initial state
-    console.log('🏁 Starting handleAddTier:', {
+  const handleSubmitTier = (e) => {
+    e.preventDefault();
+    console.log('🎯 Submitting tier:', {
       newTier,
-      editingBillingId,
-      existingTiers: tiers
+      editingBillingId
     });
 
     if (!newTier.tier_min || !newTier.tier_max || !newTier.per_employee_rate) {
-      console.warn('❌ Missing required fields:', newTier);
-      alert("Please fill in all tier fields");
+      alert("Please fill in all fields");
       return;
     }
 
-    const requestBody = {
-      partner_billing_id: editingBillingId,
-      tier_min: parseInt(newTier.tier_min),
-      tier_max: parseInt(newTier.tier_max),
-      per_employee_rate: parseFloat(newTier.per_employee_rate)
-    };
-
-    console.log('📤 Sending request:', {
-      url: 'https://billing-system-api-8m6c.onrender.com/api/billing-tiers',
-      method: 'POST',
-      body: requestBody
+    const updatedTiers = [...tiers, newTier];
+    onTierChange(updatedTiers);
+    setNewTier({
+      tier_min: "",
+      tier_max: "",
+      per_employee_rate: ""
     });
-
-    try {
-      const response = await fetch('https://billing-system-api-8m6c.onrender.com/api/billing-tiers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      console.log('📥 Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Response error:', errorText);
-        throw new Error('Failed to save tier');
-      }
-
-      const savedTier = await response.json();
-      console.log('✅ Saved tier:', savedTier);
-      
-      const updatedTiers = [...tiers, savedTier];
-      console.log('📊 Updated tiers:', updatedTiers);
-      
-      onTierChange(updatedTiers);
-      setNewTier({ tier_min: "", tier_max: "", per_employee_rate: "" });
-      setTierErrors([]);
-    } catch (error) {
-      console.error('❌ Error saving tier:', error);
-      alert('Failed to save tier: ' + error.message);
-    }
   };
 
-const handleRemoveTier = async (index) => {
-  const tierToRemove = tiers[index];
+  const handleRemoveTier = async (index) => {
+    const tierToRemove = tiers[index];
 
-  if (!tierToRemove.id) {
-    const updatedTiers = tiers.filter((_, i) => i !== index);
-    onTierChange(updatedTiers);
-    return;
-  }
-
-  try {
-    const response = await fetch(`https://billing-system-api-8m6c.onrender.com/api/billing-tiers/${tierToRemove.id}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to delete tier");
+    if (!tierToRemove.id) {
+      const updatedTiers = tiers.filter((_, i) => i !== index);
+      onTierChange(updatedTiers);
+      return;
     }
 
-    const updatedTiers = tiers.filter((_, i) => i !== index);
-    onTierChange(updatedTiers);
-  } catch (error) {
-    console.error("Error deleting tier:", error);
-  }
-};
+    try {
+      const response = await fetch(`https://billing-system-api-8m6c.onrender.com/api/billing-tiers/${tierToRemove.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
 
+      if (!response.ok) {
+        throw new Error("Failed to delete tier");
+      }
+
+      const updatedTiers = tiers.filter((_, i) => i !== index);
+      onTierChange(updatedTiers);
+    } catch (error) {
+      console.error("Error deleting tier:", error);
+    }
+  };
 
   useEffect(() => {
     console.log('🔄 TieredPricing useEffect:', {
@@ -136,6 +97,34 @@ const handleRemoveTier = async (index) => {
     <div className="tiered-pricing-section">
       <h4>Tiered Pricing</h4>
       
+      <form onSubmit={handleSubmitTier}>
+        <div>
+          <input
+            type="number"
+            value={newTier.tier_min}
+            onChange={(e) => setNewTier({...newTier, tier_min: e.target.value})}
+            placeholder="Min Employees"
+            required
+          />
+          <input
+            type="number"
+            value={newTier.tier_max}
+            onChange={(e) => setNewTier({...newTier, tier_max: e.target.value})}
+            placeholder="Max Employees"
+            required
+          />
+          <input
+            type="number"
+            step="0.01"
+            value={newTier.per_employee_rate}
+            onChange={(e) => setNewTier({...newTier, per_employee_rate: e.target.value})}
+            placeholder="Rate per Employee"
+            required
+          />
+          <button type="submit">Add Tier</button>
+        </div>
+      </form>
+
       {tierErrors.length > 0 && (
         <div className="error-messages">
           <ul>
@@ -168,39 +157,6 @@ const handleRemoveTier = async (index) => {
               </td>
             </tr>
           ))}
-          <tr>
-            <td>
-              <input
-                type="number"
-                value={newTier.tier_min}
-                onChange={(e) => setNewTier({...newTier, tier_min: e.target.value})}
-                placeholder="Min"
-                className="w-full"
-              />
-            </td>
-            <td>
-              <input
-                type="number"
-                value={newTier.tier_max}
-                onChange={(e) => setNewTier({...newTier, tier_max: e.target.value})}
-                placeholder="Max"
-                className="w-full"
-              />
-            </td>
-            <td>
-              <input
-                type="number"
-                step="0.01"
-                value={newTier.per_employee_rate}
-                onChange={(e) => setNewTier({...newTier, per_employee_rate: e.target.value})}
-                placeholder="Rate"
-                className="w-full"
-              />
-            </td>
-            <td>
-              <button onClick={handleAddTier}>Add Tier</button>
-            </td>
-          </tr>
         </tbody>
       </table>
     </div>
