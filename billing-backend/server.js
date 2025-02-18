@@ -8,9 +8,12 @@ const app = express();
 const port = 5050;
 
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? 'https://billing-system-frontend.onrender.com'
-    : 'http://localhost:3000',
+  origin: [
+    'https://billing-system-frontend.onrender.com',
+    'http://localhost:3000'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
 app.use(express.json({ limit: "50mb" }));
@@ -136,6 +139,8 @@ app.post("/upload-billing", async (req, res) => {
 app.get("/api/partners", async (req, res) => {
   try {
     const { showInactive } = req.query;
+    console.log("Fetching partners with showInactive:", showInactive);
+    
     let query = "SELECT * FROM partners";
     
     // Only add WHERE clause if we're not showing inactive
@@ -145,11 +150,21 @@ app.get("/api/partners", async (req, res) => {
     
     query += " ORDER BY partner_name ASC";
     
+    console.log("Running query:", query);
     const result = await pool.query(query);
+    console.log("Found partners:", result.rows.length);
+    
     res.json(result.rows);
   } catch (error) {
-    console.error("Error fetching partners:", error);
-    res.status(500).send("Server error");
+    console.error("Detailed error in /api/partners:", {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    });
+    res.status(500).json({ 
+      error: "Server error",
+      details: error.message
+    });
   }
 });
 
@@ -233,13 +248,18 @@ app.put("/api/partners/:id", async (req, res) => {
 // BILLING ITEMS ROUTES
 app.get("/api/billing-items", async (req, res) => {
   try {
+    console.log("Fetching billing items...");
     const result = await pool.query(
       "SELECT id, item_code, item_name, description, is_active, billing_type FROM billing_items ORDER BY id"
     );
+    console.log("Found items:", result.rows);
     res.json(result.rows);
   } catch (err) {
-    console.error("Error fetching billing items:", err);
-    res.status(500).send("Server Error");
+    console.error("Error in billing items:", err);
+    res.status(500).json({ 
+      error: err.message,
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 });
 
