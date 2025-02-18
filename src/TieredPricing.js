@@ -47,14 +47,13 @@ const handleRemoveTier = async (index) => {
   const tierToRemove = tiers[index];
 
   if (!tierToRemove.id) {
-    // If the tier is new (not saved in DB), just remove it locally
     const updatedTiers = tiers.filter((_, i) => i !== index);
     onTierChange(updatedTiers);
     return;
   }
 
   try {
-    const response = await fetch(`http://localhost:5050/api/billing-tiers/${tierToRemove.id}`, {
+    const response = await fetch(`https://billing-system-api-8m6c.onrender.com/api/billing-tiers/${tierToRemove.id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
     });
@@ -63,7 +62,6 @@ const handleRemoveTier = async (index) => {
       throw new Error("Failed to delete tier");
     }
 
-    // Remove the tier from the UI **after** the server confirms deletion
     const updatedTiers = tiers.filter((_, i) => i !== index);
     onTierChange(updatedTiers);
   } catch (error) {
@@ -76,7 +74,7 @@ const handleRemoveTier = async (index) => {
     if (editingBillingId) {
       const fetchTiers = async () => {
         try {
-          const response = await fetch(`http://localhost:5050/api/billing-tiers/${editingBillingId}`);
+          const response = await fetch(`https://billing-system-api-8m6c.onrender.com/api/billing-tiers/${editingBillingId}`);
           const tierData = await response.json();
           onTierChange(tierData);
         } catch (error) {
