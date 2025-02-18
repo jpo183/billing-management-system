@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import "./App.css";
 
 const BillingItems = () => {
@@ -13,13 +14,23 @@ const BillingItems = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [showActive, setShowActive] = useState(true);
   const navigate = useNavigate();
+  
+  const apiUrl = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
 
   const fetchBillingItems = () => {
-    fetch("http://localhost:5050/api/billing-items")
-      .then((response) => response.json())
-      .then((data) => setBillingItems(data))
+    axios.get(`${apiUrl}/api/billing-items`)
+      .then((response) => setBillingItems(response.data))
       .catch((error) => console.error("Error fetching billing items:", error));
   };
+
+  // Log environment on mount
+  useEffect(() => {
+    console.log('Environment variables:', {
+      NODE_ENV: process.env.NODE_ENV,
+      REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+      apiUrl: apiUrl
+    });
+  }, []);
 
   useEffect(() => {
     fetchBillingItems();
@@ -39,14 +50,14 @@ const BillingItems = () => {
     };
 
     const url = editingItem
-      ? `http://localhost:5050/api/billing-items/${editingItem.id}`
-      : "http://localhost:5050/api/billing-items";
+      ? `${apiUrl}/api/billing-items/${editingItem.id}`
+      : `${apiUrl}/api/billing-items`;
     const method = editingItem ? "PUT" : "POST";
 
-    fetch(url, {
+    axios({
       method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(billingItemData),
+      url,
+      data: billingItemData
     })
       .then(() => {
         fetchBillingItems();
@@ -80,9 +91,7 @@ const BillingItems = () => {
       return;
     }
 
-    fetch(`http://localhost:5050/api/billing-items/${id}`, {
-      method: "DELETE",
-    })
+    axios.delete(`${apiUrl}/api/billing-items/${id}`)
       .then((response) => {
         if (!response.ok) {
           return response.json().then((err) => {
