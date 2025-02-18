@@ -668,27 +668,43 @@ app.post("/api/addl-billings", async (req, res) => {
   }
 });
 
-// Get all additional billings
-// Get filtered one-time billings by partner and date range
+// Update the additional billings endpoint
 app.get("/api/addl-billings/:partnerId", async (req, res) => {
   try {
     const { partnerId } = req.params;
-    console.log('🔍 Fetching additional billings for partner:', partnerId);
+    console.log('🔍 Fetching non-finalized additional billings for partner:', partnerId);
     
     const result = await pool.query(
       `SELECT ab.*, bi.item_name, bi.billing_type
        FROM addl_billings ab
        LEFT JOIN billing_items bi ON ab.billing_item_id = bi.id
        WHERE ab.partner_id = $1 
-       AND ab.invoice_id IS NULL
+       AND (
+         -- Not on any invoice
+         NOT EXISTS (
+           SELECT 1 
+           FROM invoice_one_time_fees iotf
+           WHERE iotf.addl_billing_id = ab.id
+         )
+         OR
+         -- Only on voided invoices
+         NOT EXISTS (
+           SELECT 1 
+           FROM invoice_one_time_fees iotf
+           JOIN invoice_master im ON iotf.invoice_id = im.id
+           WHERE iotf.addl_billing_id = ab.id
+           AND im.status != 'void'
+         )
+       )
        ORDER BY ab.billing_date DESC`,
       [partnerId]
     );
     
-    console.log(`✅ Found ${result.rows.length} non-finalized additional billings`);
+    console.log(`✅ Found ${result.rows.length} non-finalized additional billings for partner ${partnerId}`);
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error:', error);
+    console.error('Error details:', error.message);
     res.status(500).json({ error: 'Failed to fetch additional billings' });
   }
 });
