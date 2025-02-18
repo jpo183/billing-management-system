@@ -14,8 +14,12 @@ const AuthProvider = ({ children }) => {
     return null; // or a loading spinner
   }
 
+  const clientId = process.env.NODE_ENV === 'production' 
+    ? 'your-production-client-id'
+    : 'your-development-client-id';
+
   return (
-    <GoogleOAuthProvider clientId="350399588039-ruea78cj6ho6bu230jg8d11207b8eqlt.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId={clientId}>
       {children}
     </GoogleOAuthProvider>
   );
