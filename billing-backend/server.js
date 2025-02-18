@@ -1090,9 +1090,11 @@ app.get("/api/client-billings/:partnerId", async (req, res) => {
   try {
     console.log('🔍 Fetching client billings for partner:', req.params.partnerId);
     const result = await pool.query(
-      `SELECT * FROM client_billings 
-       WHERE partner_id = $1 
-       ORDER BY client_name`,
+      `SELECT cb.*, bi.item_name, bi.billing_type 
+       FROM client_billings cb
+       LEFT JOIN billing_items bi ON cb.billing_item_id = bi.id
+       WHERE cb.partner_id = $1 
+       ORDER BY cb.client_name`,
       [req.params.partnerId]
     );
     console.log('✅ Found client billings:', result.rows);
