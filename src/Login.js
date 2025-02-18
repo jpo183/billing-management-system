@@ -46,11 +46,10 @@ const handleCredentialResponse = async (response) => {
         console.log('Decoded token:', decoded);
         
         console.log('Sending to backend...');
-        const backendResponse = await axios.post('http://localhost:5050/api/google-auth', {
-            google_id: decoded.sub,
-            email: decoded.email,
-            name: decoded.name
-        });
+        const backendResponse = await axios.post(
+            `${process.env.REACT_APP_API_URL}/api/google-auth`,
+            { credential: response.credential }
+        );
 
         console.log('Backend response:', backendResponse.data);
 
@@ -63,7 +62,7 @@ const handleCredentialResponse = async (response) => {
         // Fetch user from backend using the correct ID
         const userId = backendResponse.data.id;
         console.log(`Fetching user with ID: ${userId}`);
-        const userResponse = await axios.get(`http://localhost:5050/api/users/${userId}`);
+        const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/api/users/${userId}`);
 
         // Store updated user info
         localStorage.setItem('userRole', userResponse.data.role);

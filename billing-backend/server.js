@@ -8,7 +8,7 @@ const port = 5050;
 
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? 'https://billing-system-frontend.onrender.com'  // Your Render frontend URL
+    ? 'https://billing-system-frontend.onrender.com'
     : 'http://localhost:3000',
   credentials: true
 }));
