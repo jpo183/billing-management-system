@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import TieredPricing from './TieredPricing';
 import "./App.css";
 
+const API_URL = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
+
 const PartnerBillingSetup = () => {
   const { partnerId } = useParams();
   const navigate = useNavigate();
@@ -29,7 +31,7 @@ const PartnerBillingSetup = () => {
 const fetchBillingRecords = useCallback(async () => {
   try {
     setIsLoading(true);
-    const billingResponse = await fetch(`https://billing-system-api-8m6c.onrender.com/api/partner-billing/${partnerId}`);
+    const billingResponse = await fetch(`${API_URL}/api/partner-billing/${partnerId}`);
     const billingData = await billingResponse.json();
 
     // Fetch tiers for per_employee billing types
@@ -37,7 +39,7 @@ const fetchBillingRecords = useCallback(async () => {
       billingData.map(async (record) => {
         if (record.billing_type === "per_employee") {
           try {
-            const tiersResponse = await fetch(`https://billing-system-api-8m6c.onrender.com/api/billing-tiers/${record.id}`);
+            const tiersResponse = await fetch(`${API_URL}/api/billing-tiers/${record.id}`);
             const tiers = await tiersResponse.json();
             return { ...record, tiers };
           } catch (error) {
@@ -62,12 +64,12 @@ const fetchBillingRecords = useCallback(async () => {
     console.log('🔄 Fetching initial data...');
     
     Promise.all([
-      fetch(`https://billing-system-api-8m6c.onrender.com/api/partners/${partnerId}`)
+      fetch(`${API_URL}/api/partners/${partnerId}`)
         .then(res => {
           if (!res.ok) throw new Error('Failed to fetch partner');
           return res.json();
         }),
-      fetch("https://billing-system-api-8m6c.onrender.com/api/billing-items")
+      fetch(`${API_URL}/api/billing-items`)
         .then(res => {
           if (!res.ok) throw new Error('Failed to fetch billing items');
           return res.json();
@@ -101,7 +103,7 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
 
 
   if (record.billing_type === "per_employee") {
-    fetch(`https://billing-system-api-8m6c.onrender.com/api/billing-tiers/${record.id}`)
+    fetch(`${API_URL}/api/billing-tiers/${record.id}`)
       .then((response) => response.json())
       .then((tierData) => setSelectedBillingTiers(tierData))
       .catch((error) => console.error("Error fetching tiers:", error));
@@ -139,14 +141,14 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
 
     let savedBilling;
     if (editingRecord) {
-      const response = await fetch(`https://billing-system-api-8m6c.onrender.com/api/partner-billing/${editingRecord.id}`, {
+      const response = await fetch(`${API_URL}/api/partner-billing/${editingRecord.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(billingData),
       });
       savedBilling = await response.json();
     } else {
-      const response = await fetch("https://billing-system-api-8m6c.onrender.com/api/partner-billing", {
+      const response = await fetch(`${API_URL}/api/partner-billing`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(billingData),
@@ -163,7 +165,7 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
       try {
         // Delete existing tiers if editing
         if (editingRecord) {
-          await fetch(`https://billing-system-api-8m6c.onrender.com/api/billing-tiers/${editingRecord.id}`, {
+          await fetch(`${API_URL}/api/billing-tiers/${editingRecord.id}`, {
             method: 'DELETE'
           });
         }
@@ -179,7 +181,7 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
 
           console.log('📤 Saving tier with parsed numbers:', tierData);
 
-          const response = await fetch('https://billing-system-api-8m6c.onrender.com/api/billing-tiers', {
+          const response = await fetch(`${API_URL}/api/billing-tiers`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -204,7 +206,7 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
 
   const handleDelete = (recordId) => {
     if (!window.confirm("Are you sure you want to delete this billing item?")) return;
-    fetch(`https://billing-system-api-8m6c.onrender.com/api/partner-billing/${recordId}`, { method: "DELETE" })
+    fetch(`${API_URL}/api/partner-billing/${recordId}`, { method: "DELETE" })
       .then(() => fetchBillingRecords())
       .catch((error) => console.error("Error deleting billing record:", error));
   };

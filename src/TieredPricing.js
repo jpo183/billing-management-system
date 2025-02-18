@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
+
 const TieredPricing = ({ tiers, onTierChange, editingBillingId = null }) => {
   const [newTier, setNewTier] = useState({
     tier_min: "",
@@ -55,7 +57,7 @@ const TieredPricing = ({ tiers, onTierChange, editingBillingId = null }) => {
     }
 
     try {
-      const response = await fetch(`https://billing-system-api-8m6c.onrender.com/api/billing-tiers/${tierToRemove.id}`, {
+      const response = await fetch(`${API_URL}/api/billing-tiers/${tierToRemove.id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
@@ -80,7 +82,7 @@ const TieredPricing = ({ tiers, onTierChange, editingBillingId = null }) => {
     if (editingBillingId) {
       const fetchTiers = async () => {
         try {
-          const response = await fetch(`https://billing-system-api-8m6c.onrender.com/api/billing-tiers/${editingBillingId}`);
+          const response = await fetch(`${API_URL}/api/billing-tiers/${editingBillingId}`);
           const tierData = await response.json();
           onTierChange(tierData);
         } catch (error) {
