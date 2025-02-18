@@ -6,7 +6,12 @@ const path = require('path');
 const app = express();
 const port = 5050;
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? 'https://billing-system-frontend.onrender.com'  // Your Render frontend URL
+    : 'http://localhost:3000',
+  credentials: true
+}));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 

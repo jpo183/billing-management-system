@@ -2,11 +2,7 @@ services:
   - type: web
     name: billing-system-api
     env: node
-    buildCommand: |
-      cd billing-backend
-      npm install
-      cd ..
-      npm install
+    buildCommand: cd billing-backend && npm install
     startCommand: cd billing-backend && node server.js
     envVars:
       - key: NODE_ENV
