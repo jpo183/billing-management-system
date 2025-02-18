@@ -98,6 +98,13 @@ setEndDate(record.end_date ? new Date(record.end_date).toISOString().split("T")[
 
   // Handle Save (Create or Update)
   const handleSaveBilling = async () => {
+    console.log('💾 Starting handleSaveBilling:', {
+      selectedBillingItem,
+      selectedItem: billingItems.find((item) => item.id.toString() === selectedBillingItem),
+      editingRecord,
+      selectedBillingTiers
+    });
+
     const selectedItem = billingItems.find((item) => item.id.toString() === selectedBillingItem);
     if (!selectedItem) {
       alert("⚠️ Please select a valid billing item.");

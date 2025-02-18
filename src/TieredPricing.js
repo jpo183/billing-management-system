@@ -111,6 +111,11 @@ const handleRemoveTier = async (index) => {
 
 
   useEffect(() => {
+    console.log('🔄 TieredPricing useEffect:', {
+      editingBillingId,
+      tiers
+    });
+    
     if (editingBillingId) {
       const fetchTiers = async () => {
         try {
