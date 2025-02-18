@@ -24,23 +24,45 @@ const TieredPricing = ({ tiers, onTierChange, editingBillingId = null }) => {
     return errors;
   };
 
-  const handleAddTier = () => {
+  const handleAddTier = async () => {
     if (!newTier.tier_min || !newTier.tier_max || !newTier.per_employee_rate) {
       alert("Please fill in all tier fields");
       return;
     }
 
-    const updatedTiers = [...tiers, newTier];
-    const errors = validateTiers(updatedTiers);
-    
-    if (errors.length > 0) {
-      setTierErrors(errors);
-      return;
-    }
+    console.log('Adding tier:', {
+      newTier,
+      editingBillingId
+    });
 
-    onTierChange(updatedTiers);
-    setNewTier({ tier_min: "", tier_max: "", per_employee_rate: "" });
-    setTierErrors([]);
+    try {
+      const response = await fetch('https://billing-system-api-8m6c.onrender.com/api/billing-tiers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          partner_billing_id: editingBillingId,
+          tier_min: parseInt(newTier.tier_min),
+          tier_max: parseInt(newTier.tier_max),
+          per_employee_rate: parseFloat(newTier.per_employee_rate)
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save tier');
+      }
+
+      const savedTier = await response.json();
+      
+      const updatedTiers = [...tiers, savedTier];
+      onTierChange(updatedTiers);
+      setNewTier({ tier_min: "", tier_max: "", per_employee_rate: "" });
+      setTierErrors([]);
+    } catch (error) {
+      console.error('Error saving tier:', error);
+      alert('Failed to save tier');
+    }
   };
 
 const handleRemoveTier = async (index) => {
