@@ -1661,6 +1661,80 @@ app.put("/api/invoices/:id/status", async (req, res) => {
   }
 });
 
+// Get draft invoices
+app.get("/api/invoices/draft", async (req, res) => {
+  try {
+    console.log('🔍 Fetching draft invoices...');
+    
+    const query = `
+      WITH invoice_totals AS (
+        SELECT 
+          invoice_id,
+          SUM(total_monthly_fee) as monthly_total
+        FROM invoice_monthly_fees
+        GROUP BY invoice_id
+      ),
+      recurring_totals AS (
+        SELECT 
+          invoice_id,
+          SUM(invoiced_amount) as recurring_total
+        FROM invoice_recurring_fees
+        GROUP BY invoice_id
+      ),
+      onetime_totals AS (
+        SELECT 
+          invoice_id,
+          SUM(invoiced_amount) as onetime_total
+        FROM invoice_one_time_fees
+        GROUP BY invoice_id
+      )
+      SELECT 
+        im.id,
+        im.invoice_number,
+        im.partner_name,
+        im.invoice_date,
+        im.invoice_month,
+        im.status,
+        im.total_amount,
+        COALESCE(it.monthly_total, 0) as monthly_total,
+        COALESCE(rt.recurring_total, 0) as recurring_total,
+        COALESCE(ot.onetime_total, 0) as onetime_total
+      FROM invoice_master im
+      LEFT JOIN invoice_totals it ON im.id = it.invoice_id
+      LEFT JOIN recurring_totals rt ON im.id = rt.invoice_id
+      LEFT JOIN onetime_totals ot ON im.id = ot.invoice_id
+      WHERE im.status = 'draft'
+      ORDER BY im.created_at DESC
+    `;
+
+    console.log('🔍 Executing query:', { text: query });
+    
+    const result = await pool.query(query);
+    console.log(`✅ Found ${result.rows.length} draft invoices`);
+
+    if (result.rows.length > 0) {
+      console.log('📋 Sample draft invoice:', {
+        id: result.rows[0].id,
+        invoice_number: result.rows[0].invoice_number,
+        total_amount: result.rows[0].total_amount
+      });
+    }
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching draft invoices:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      detail: error.detail
+    });
+    res.status(500).json({ 
+      error: 'Failed to fetch draft invoices',
+      details: error.message 
+    });
+  }
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
