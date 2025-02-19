@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API_URL = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
+
 const FinalizedInvoices = () => {
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
@@ -15,7 +17,7 @@ const FinalizedInvoices = () => {
     fetchInvoices();
 
     // Fetch partners for the dropdown
-    fetch("http://localhost:5050/api/partners")
+    fetch(`${API_URL}/api/partners`)
       .then((response) => response.json())
       .then((data) => setPartners(data))
       .catch(() => setPartners([]));
@@ -23,7 +25,7 @@ const FinalizedInvoices = () => {
 
   const fetchInvoices = async () => {
     setLoading(true);
-    let url = "http://localhost:5050/api/invoices/final?";
+    let url = `${API_URL}/api/invoices/final?`;
 
     if (selectedPartner) {
       url += `partner_id=${selectedPartner}&`;
