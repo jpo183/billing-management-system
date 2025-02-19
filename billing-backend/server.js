@@ -1684,7 +1684,11 @@ app.post("/api/invoices/:id/finalize", async (req, res) => {
 app.get("/api/invoices/final", async (req, res) => {
   try {
     const { partner_id, from_date, to_date } = req.query;
-    console.log('🔍 Fetching finalized invoices with filters:', { partner_id, from_date, to_date });
+    console.log('🔍 Fetching finalized invoices with filters:', { 
+      partner_id: partner_id || 'none', 
+      from_date: from_date || 'none', 
+      to_date: to_date || 'none' 
+    });
 
     let query = `
       SELECT 
@@ -1707,19 +1711,24 @@ app.get("/api/invoices/final", async (req, res) => {
     const queryParams = [];
     let paramCount = 1;
 
-    if (partner_id) {
+    // Add partner_id filter if provided and valid
+    if (partner_id && !isNaN(partner_id)) {
+      console.log('📋 Adding partner filter:', partner_id);
       query += ` AND im.partner_id = $${paramCount}`;
-      queryParams.push(partner_id);
+      queryParams.push(parseInt(partner_id, 10));
       paramCount++;
     }
 
+    // Add date filters if provided
     if (from_date) {
+      console.log('📅 Adding from_date filter:', from_date);
       query += ` AND im.invoice_date >= $${paramCount}`;
       queryParams.push(from_date);
       paramCount++;
     }
 
     if (to_date) {
+      console.log('📅 Adding to_date filter:', to_date);
       query += ` AND im.invoice_date <= $${paramCount}`;
       queryParams.push(to_date);
       paramCount++;
@@ -1737,12 +1746,40 @@ app.get("/api/invoices/final", async (req, res) => {
       ORDER BY im.invoice_date DESC
     `;
 
+    console.log('🔍 Executing query:', {
+      text: query,
+      params: queryParams
+    });
+
     const result = await pool.query(query, queryParams);
     console.log(`✅ Found ${result.rows.length} finalized invoices`);
+    
+    // Log sample of results
+    if (result.rows.length > 0) {
+      console.log('📋 Sample invoice:', {
+        id: result.rows[0].id,
+        invoice_number: result.rows[0].invoice_number,
+        totals: {
+          monthly: result.rows[0].monthly_total,
+          recurring: result.rows[0].recurring_total,
+          onetime: result.rows[0].onetime_total,
+          grand: result.rows[0].grand_total
+        }
+      });
+    }
+
     res.json(result.rows);
   } catch (error) {
-    console.error('❌ Error fetching finalized invoices:', error);
-    res.status(500).json({ error: 'Failed to fetch finalized invoices' });
+    console.error('❌ Error fetching finalized invoices:', {
+      message: error.message,
+      stack: error.stack,
+      query: error.query,
+      parameters: error.parameters
+    });
+    res.status(500).json({ 
+      error: 'Failed to fetch finalized invoices',
+      details: error.message 
+    });
   }
 });
 
