@@ -239,42 +239,17 @@ const InvoiceReview = () => {
                 const originalAmount = parseFloat(fee.original_amount || 0);
                 const invoicedAmount = parseFloat(fee.invoiced_amount || 0);
                 
-                // Special handling for Base Monthly Minimum
-                if (fee.item_name === "Base Monthly Minimum") {
-                  // Calculate total of ONLY base fees from active clients
-                  const baseFeesTotal = invoice.monthly_fees
-                    .filter(fee => fee.is_pay_group_active)
-                    .reduce((sum, fee) => {
-                      const baseFee = parseFloat(fee.base_fee_amount || 0);
-                      console.log(`Including base fee for ${fee.client_name}:`, baseFee);
-                      return sum + baseFee;
-                    }, 0);
-
-                  console.log('Total base fees:', baseFeesTotal);
-                  
-                  const minimumFeeAdjusted = Math.max(0, 400 - baseFeesTotal);
-                  console.log('Adjusted minimum fee:', minimumFeeAdjusted);
-                  
-                  return (
-                    <tr key={index}>
-                      <td>{fee.client_name}</td>
-                      <td>
-                        {fee.item_name}
-                        <div className="fee-note">
-                          (Base Fees Total: ${baseFeesTotal.toFixed(2)}, Minimum: $400.00, Applied: ${minimumFeeAdjusted.toFixed(2)})
-                        </div>
-                      </td>
-                      <td>${originalAmount.toFixed(2)}</td>
-                      <td>${minimumFeeAdjusted.toFixed(2)}</td>
-                      <td>{fee.override_reason || 'N/A'}</td>
-                    </tr>
-                  );
-                }
-                
                 return (
                   <tr key={index}>
                     <td>{fee.client_name}</td>
-                    <td>{fee.item_name}</td>
+                    <td>
+                      {fee.item_name}
+                      {fee.item_name === "Base Monthly Minimum" && (
+                        <div className="fee-note">
+                          (Monthly Minimum Fee)
+                        </div>
+                      )}
+                    </td>
                     <td>${originalAmount.toFixed(2)}</td>
                     <td>${invoicedAmount.toFixed(2)}</td>
                     <td>{fee.override_reason || 'N/A'}</td>
@@ -284,16 +259,9 @@ const InvoiceReview = () => {
             </tbody>
           </table>
           <div className="section-subtotal">
-            Recurring Fees Subtotal: ${invoice.recurring_fees.reduce((sum, fee) => {
-              if (fee.item_name === "Base Monthly Minimum") {
-                const baseFeesTotal = invoice.monthly_fees
-                  .filter(fee => fee.is_pay_group_active)
-                  .reduce((sum, fee) => sum + parseFloat(fee.base_fee_amount || 0), 0);
-                
-                return sum + Math.max(0, 400 - baseFeesTotal);
-              }
-              return sum + parseFloat(fee.invoiced_amount || 0);
-            }, 0).toFixed(2)}
+            Recurring Fees Subtotal: ${invoice.recurring_fees.reduce((sum, fee) => 
+              sum + parseFloat(fee.invoiced_amount || 0), 0
+            ).toFixed(2)}
           </div>
         </>
       ) : <p>No recurring fees</p>}
