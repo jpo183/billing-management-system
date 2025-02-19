@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
+import LogoImage from './PWX logo.jpg';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -96,7 +97,15 @@ const handleCredentialResponse = async (response) => {
 
     return (
         <div className="login-container">
-            <h1>Welcome to Billing System</h1>
+            <img 
+                src={LogoImage} 
+                alt="PeopleWorX Logo" 
+                style={{ 
+                    maxWidth: '200px', 
+                    marginBottom: '20px' 
+                }} 
+            />
+            <h1>Welcome to the Partner Billing System</h1>
             <div id="googleSignInDiv"></div>
         </div>
     );
