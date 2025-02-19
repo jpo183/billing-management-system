@@ -165,7 +165,7 @@ const InvoiceReview = () => {
 
       {/* Monthly Fees Section */}
       <h3>Monthly Fees</h3>
-      {invoice.monthly_fees?.length > 0 ? (
+      {invoice.monthly_fees?.filter(fee => fee.is_pay_group_active)?.length > 0 ? (
         <>
           <table>
             <thead>
@@ -177,29 +177,48 @@ const InvoiceReview = () => {
               </tr>
             </thead>
             <tbody>
-              {invoice.monthly_fees.map((fee, index) => {
-                const baseFee = parseFloat(fee.base_fee_amount || 0);
-                const perEmployeeFee = parseFloat(fee.per_employee_fee_amount || 0);
-                const total = baseFee + perEmployeeFee;
-                
-                return (
-                  <tr key={index}>
-                    <td>{fee.client_name}</td>
-                    <td>${baseFee.toFixed(2)}</td>
-                    <td>${perEmployeeFee.toFixed(2)}</td>
-                    <td>${total.toFixed(2)}</td>
-                  </tr>
-                );
-              })}
+              {invoice.monthly_fees
+                .filter(fee => fee.is_pay_group_active)
+                .map((fee, index) => {
+                  const baseFee = parseFloat(fee.base_fee_amount || 0);
+                  const perEmployeeFee = parseFloat(fee.per_employee_fee_amount || 0);
+                  const total = baseFee + perEmployeeFee;
+                  
+                  console.log(`Monthly Fee for ${fee.client_name}:`, {
+                    baseFee,
+                    perEmployeeFee,
+                    total,
+                    isActive: fee.is_pay_group_active
+                  });
+                  
+                  return (
+                    <tr key={index}>
+                      <td>{fee.client_name}</td>
+                      <td>${baseFee.toFixed(2)}</td>
+                      <td>${perEmployeeFee.toFixed(2)}</td>
+                      <td>${total.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
           <div className="section-subtotal">
-            Monthly Fees Subtotal: ${invoice.monthly_fees.reduce((sum, fee) => 
-              sum + parseFloat(fee.base_fee_amount || 0) + parseFloat(fee.per_employee_fee_amount || 0), 0
-            ).toFixed(2)}
+            {(() => {
+              const subtotal = invoice.monthly_fees
+                .filter(fee => fee.is_pay_group_active)
+                .reduce((sum, fee) => {
+                  const total = parseFloat(fee.base_fee_amount || 0) + 
+                               parseFloat(fee.per_employee_fee_amount || 0);
+                  console.log(`Adding to monthly subtotal for ${fee.client_name}:`, total);
+                  return sum + total;
+                }, 0);
+              
+              console.log('Final monthly subtotal:', subtotal);
+              return `Monthly Fees Subtotal: $${subtotal.toFixed(2)}`;
+            })()}
           </div>
         </>
-      ) : <p>No monthly fees</p>}
+      ) : <p>No active monthly fees</p>}
 
       {/* Recurring Fees Section */}
       <h3>Recurring Fees</h3>
@@ -224,9 +243,14 @@ const InvoiceReview = () => {
                 if (fee.item_name === "Base Monthly Minimum") {
                   const otherFeesTotal = invoice.recurring_fees
                     .filter(f => f.item_name !== "Base Monthly Minimum")
-                    .reduce((sum, f) => sum + parseFloat(f.invoiced_amount || 0), 0);
+                    .reduce((sum, f) => {
+                      console.log(`Adding to other fees total: ${f.item_name} = ${f.invoiced_amount}`);
+                      return sum + parseFloat(f.invoiced_amount || 0);
+                    }, 0);
                   
+                  console.log('Other fees total:', otherFeesTotal);
                   const minimumFeeAdjusted = Math.max(0, 400 - otherFeesTotal);
+                  console.log('Adjusted minimum fee:', minimumFeeAdjusted);
                   
                   return (
                     <tr key={index}>
