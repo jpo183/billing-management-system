@@ -59,14 +59,6 @@ const InvoiceReview = () => {
         console.log('Recurring Billings:', recurringData);
         console.log('One-Time Billings:', oneTimeData);
 
-        // Add subtotal verification
-        const subtotals = {
-          monthly: monthlyData.reduce((sum, item) => sum + parseFloat(item.total_monthly_fee || 0), 0),
-          recurring: recurringData.reduce((sum, item) => sum + parseFloat(item.invoiced_amount || 0), 0),
-          oneTime: oneTimeData.reduce((sum, item) => sum + parseFloat(item.invoiced_amount || 0), 0)
-        };
-        console.log('Calculated Subtotals:', subtotals);
-
         setMonthlyBillings(monthlyData);
         setRecurringBillings(recurringData);
         setOneTimeBillings(oneTimeData);
@@ -79,7 +71,7 @@ const InvoiceReview = () => {
     };
 
     fetchInvoiceData();
-  }, [id, API_URL]);
+  }, [id]);
 
   const handleStatusChange = async (newStatus) => {
     try {
@@ -121,34 +113,6 @@ const InvoiceReview = () => {
   if (error) return <div className="error-message">{error}</div>;
   if (!invoice) return <div>No invoice found</div>;
 
-  const calculateSubtotals = () => {
-    const monthlyBaseFeeTotal = monthlyBillings.reduce((sum, item) => 
-      sum + parseFloat(item.base_fee_amount || 0), 0);
-    
-    const monthlyPerEmployeeFeeTotal = monthlyBillings.reduce((sum, item) => 
-      sum + parseFloat(item.per_employee_fee_amount || 0), 0);
-    
-    const monthlyTotal = monthlyBillings.reduce((sum, item) => 
-      sum + parseFloat(item.total_monthly_fee || 0), 0);
-    
-    const recurringTotal = recurringBillings.reduce((sum, item) => 
-      sum + parseFloat(item.invoiced_amount || 0), 0);
-    
-    const oneTimeTotal = oneTimeBillings.reduce((sum, item) => 
-      sum + parseFloat(item.invoiced_amount || 0), 0);
-
-    // Ensure everything is properly rounded to 2 decimal places
-    return {
-      monthlyBaseFeeTotal: Number(monthlyBaseFeeTotal.toFixed(2)),
-      monthlyPerEmployeeFeeTotal: Number(monthlyPerEmployeeFeeTotal.toFixed(2)),
-      monthlyTotal: Number(monthlyTotal.toFixed(2)),
-      recurringTotal: Number(recurringTotal.toFixed(2)),
-      oneTimeTotal: Number(oneTimeTotal.toFixed(2)),
-      grandTotal: Number((monthlyTotal + recurringTotal + oneTimeTotal).toFixed(2))
-    };
-  };
-  const totals = calculateSubtotals();
-
   return (
     <div className="container">
       <h2>Invoice Review</h2>
@@ -179,43 +143,18 @@ const InvoiceReview = () => {
             <tbody>
               {invoice.monthly_fees
                 .filter(fee => fee.is_pay_group_active)
-                .map((fee, index) => {
-                  const baseFee = parseFloat(fee.base_fee_amount || 0);
-                  const perEmployeeFee = parseFloat(fee.per_employee_fee_amount || 0);
-                  const total = baseFee + perEmployeeFee;
-                  
-                  console.log(`Monthly Fee for ${fee.client_name}:`, {
-                    baseFee,
-                    perEmployeeFee,
-                    total,
-                    isActive: fee.is_pay_group_active
-                  });
-                  
-                  return (
-                    <tr key={index}>
-                      <td>{fee.client_name}</td>
-                      <td>${baseFee.toFixed(2)}</td>
-                      <td>${perEmployeeFee.toFixed(2)}</td>
-                      <td>${total.toFixed(2)}</td>
-                    </tr>
-                  );
-                })}
+                .map((fee, index) => (
+                  <tr key={index}>
+                    <td>{fee.client_name}</td>
+                    <td>${fee.base_fee_amount}</td>
+                    <td>${fee.per_employee_fee_amount}</td>
+                    <td>${fee.total_monthly_fee}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
           <div className="section-subtotal">
-            {(() => {
-              const subtotal = invoice.monthly_fees
-                .filter(fee => fee.is_pay_group_active)
-                .reduce((sum, fee) => {
-                  const total = parseFloat(fee.base_fee_amount || 0) + 
-                               parseFloat(fee.per_employee_fee_amount || 0);
-                  console.log(`Adding to monthly subtotal for ${fee.client_name}:`, total);
-                  return sum + total;
-                }, 0);
-              
-              console.log('Final monthly subtotal:', subtotal);
-              return `Monthly Fees Subtotal: $${subtotal.toFixed(2)}`;
-            })()}
+            Monthly Fees Subtotal: ${invoice.monthly_total}
           </div>
         </>
       ) : <p>No active monthly fees</p>}
@@ -235,33 +174,26 @@ const InvoiceReview = () => {
               </tr>
             </thead>
             <tbody>
-              {invoice.recurring_fees.map((fee, index) => {
-                const originalAmount = parseFloat(fee.original_amount || 0);
-                const invoicedAmount = parseFloat(fee.invoiced_amount || 0);
-                
-                return (
-                  <tr key={index}>
-                    <td>{fee.client_name}</td>
-                    <td>
-                      {fee.item_name}
-                      {fee.item_name === "Base Monthly Minimum" && (
-                        <div className="fee-note">
-                          (Monthly Minimum Fee)
-                        </div>
-                      )}
-                    </td>
-                    <td>${originalAmount.toFixed(2)}</td>
-                    <td>${invoicedAmount.toFixed(2)}</td>
-                    <td>{fee.override_reason || 'N/A'}</td>
-                  </tr>
-                );
-              })}
+              {invoice.recurring_fees.map((fee, index) => (
+                <tr key={index}>
+                  <td>{fee.client_name}</td>
+                  <td>
+                    {fee.item_name}
+                    {fee.item_name === "Base Monthly Minimum" && (
+                      <div className="fee-note">
+                        (Monthly Minimum Fee)
+                      </div>
+                    )}
+                  </td>
+                  <td>${fee.original_amount}</td>
+                  <td>${fee.invoiced_amount}</td>
+                  <td>{fee.override_reason || 'N/A'}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
           <div className="section-subtotal">
-            Recurring Fees Subtotal: ${invoice.recurring_fees.reduce((sum, fee) => 
-              sum + parseFloat(fee.invoiced_amount || 0), 0
-            ).toFixed(2)}
+            Recurring Fees Subtotal: ${invoice.recurring_total}
           </div>
         </>
       ) : <p>No recurring fees</p>}
@@ -281,32 +213,25 @@ const InvoiceReview = () => {
               </tr>
             </thead>
             <tbody>
-              {invoice.one_time_fees.map((fee, index) => {
-                const originalAmount = parseFloat(fee.original_amount || 0);
-                const invoicedAmount = parseFloat(fee.invoiced_amount || 0);
-                
-                return (
-                  <tr key={index}>
-                    <td>{fee.client_name}</td>
-                    <td>{fee.item_name}</td>
-                    <td>${originalAmount.toFixed(2)}</td>
-                    <td>${invoicedAmount.toFixed(2)}</td>
-                    <td>{fee.override_reason || 'N/A'}</td>
-                  </tr>
-                );
-              })}
+              {invoice.one_time_fees.map((fee, index) => (
+                <tr key={index}>
+                  <td>{fee.client_name}</td>
+                  <td>{fee.item_name}</td>
+                  <td>${fee.original_amount}</td>
+                  <td>${fee.invoiced_amount}</td>
+                  <td>{fee.override_reason || 'N/A'}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
           <div className="section-subtotal">
-            One-Time Fees Subtotal: ${invoice.one_time_fees.reduce((sum, fee) => 
-              sum + parseFloat(fee.invoiced_amount || 0), 0
-            ).toFixed(2)}
+            One-Time Fees Subtotal: ${invoice.onetime_total}
           </div>
         </>
       ) : <p>No one-time fees</p>}
 
       <div className="invoice-total">
-        <h3>Total Amount: ${parseFloat(invoice.total_amount).toFixed(2)}</h3>
+        <h3>Total Amount: ${invoice.total_amount}</h3>
       </div>
 
       <button 
