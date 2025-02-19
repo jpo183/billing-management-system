@@ -1873,6 +1873,99 @@ app.get("/api/invoices/:id/onetime", async (req, res) => {
   }
 });
 
+// Finalize an invoice
+app.post("/api/invoices/:id/finalize", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    console.log(`📝 Finalizing invoice ${req.params.id}...`);
+
+    // Update the invoice status to finalized
+    const result = await client.query(
+      `UPDATE invoice_master 
+       SET status = 'final'
+       WHERE id = $1 AND status = 'draft'
+       RETURNING *`,
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('Invoice not found or not in draft status');
+    }
+
+    // Log the finalized invoice details
+    console.log('✅ Finalized invoice details:', {
+      invoice_id: result.rows[0].id,
+      invoice_number: result.rows[0].invoice_number,
+      status: result.rows[0].status
+    });
+
+    await client.query('COMMIT');
+    res.json({ 
+      success: true,
+      message: 'Invoice finalized successfully',
+      invoice: result.rows[0]
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error finalizing invoice:', error);
+    res.status(500).json({ 
+      error: 'Failed to finalize invoice',
+      details: error.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// Void an invoice
+app.post("/api/invoices/:id/void", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    console.log(`🗑️ Voiding invoice ${req.params.id}...`);
+
+    // First update the master record status
+    const result = await client.query(
+      `UPDATE invoice_master 
+       SET status = 'void'
+       WHERE id = $1 
+       RETURNING *`,
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('Invoice not found');
+    }
+
+    // Log the voided invoice details
+    console.log('📝 Voided invoice details:', {
+      invoice_id: result.rows[0].id,
+      invoice_number: result.rows[0].invoice_number,
+      status: result.rows[0].status
+    });
+
+    await client.query('COMMIT');
+    console.log('✅ Invoice voided successfully');
+    res.json({ 
+      success: true,
+      message: 'Invoice voided successfully',
+      invoice: result.rows[0]
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error voiding invoice:', error);
+    res.status(500).json({ 
+      error: 'Failed to void invoice',
+      details: error.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
