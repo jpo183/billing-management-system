@@ -191,6 +191,76 @@ const MonthlyBillingImport = () => {
         className="file-input" 
       />
       
+      <div className="format-guide">
+        <h3>Required Fields:</h3>
+        <div className="field-list">
+          <div className="field-item">
+            <span className="field-name">Month/Year:</span>
+            <span className="field-desc">YYYY-MM format</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">Client Code:</span>
+            <span className="field-desc">Unique client identifier</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">Client Name:</span>
+            <span className="field-desc">Name of the client</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">Legal Company Code:</span>
+            <span className="field-desc">Legal entity code</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">Legal Name:</span>
+            <span className="field-desc">Legal entity name</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">FEIN:</span>
+            <span className="field-desc">Federal Employer Identification Number</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">State Code:</span>
+            <span className="field-desc">State code</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">Pay Group Name:</span>
+            <span className="field-desc">Name of pay group</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">Is Pay Group Active:</span>
+            <span className="field-desc">Yes/No, True/False, or 1/0</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">New Pay Group Count:</span>
+            <span className="field-desc">Integer</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">Live Payroll Count:</span>
+            <span className="field-desc">Integer</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">Total Active Employees:</span>
+            <span className="field-desc">Integer</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">Total Employees Paid:</span>
+            <span className="field-desc">Integer count of employees paid</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">Total Billing:</span>
+            <span className="field-desc">Numeric (decimal)</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">Total One Time Billing:</span>
+            <span className="field-desc">Numeric (decimal)</span>
+          </div>
+          <div className="field-item">
+            <span className="field-name">Total Checks And Vouchers:</span>
+            <span className="field-desc">Integer</span>
+          </div>
+        </div>
+      </div>
+      
       <button 
         onClick={handleUpload} 
         className="upload-button"

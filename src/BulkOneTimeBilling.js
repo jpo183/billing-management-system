@@ -83,7 +83,7 @@ const BulkOneTimeBilling = () => {
           className="file-input" 
         />
        <small className="file-format-hint">
-  Expected columns: partner_code, item_code, client_name, description, amount, billing_date
+  Expected columns: partner_code, item_code, client_name, description, amount, billing_date (yyyy-mm-dd format)
 </small>
       </div>
 

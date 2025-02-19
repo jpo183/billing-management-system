@@ -468,3 +468,39 @@ input[type="text"]:focus {
   color: #666;
   font-style: italic;
 }
+
+.format-guide {
+  margin: 20px 0;
+  padding: 15px;
+  background-color: var(--darker-grey);
+  border-radius: 8px;
+  max-width: 800px;
+}
+
+.format-guide h3 {
+  color: var(--primary-pink);
+  margin-bottom: 15px;
+}
+
+.field-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 10px;
+}
+
+.field-item {
+  display: flex;
+  align-items: baseline;
+  padding: 5px 0;
+}
+
+.field-name {
+  font-weight: bold;
+  min-width: 180px;
+  color: var(--white);
+}
+
+.field-desc {
+  color: var(--light-grey);
+  font-size: 0.9em;
+}
