@@ -462,3 +462,9 @@ input[type="text"]:focus {
   text-align: right;
   font-weight: bold;
 }
+
+.fee-note {
+  font-size: 0.85em;
+  color: #666;
+  font-style: italic;
+}

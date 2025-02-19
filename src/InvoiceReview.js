@@ -220,6 +220,30 @@ const InvoiceReview = () => {
                 const originalAmount = parseFloat(fee.original_amount || 0);
                 const invoicedAmount = parseFloat(fee.invoiced_amount || 0);
                 
+                // Special handling for Base Monthly Minimum
+                if (fee.item_name === "Base Monthly Minimum") {
+                  const otherFeesTotal = invoice.recurring_fees
+                    .filter(f => f.item_name !== "Base Monthly Minimum")
+                    .reduce((sum, f) => sum + parseFloat(f.invoiced_amount || 0), 0);
+                  
+                  const minimumFeeAdjusted = Math.max(0, 400 - otherFeesTotal);
+                  
+                  return (
+                    <tr key={index}>
+                      <td>{fee.client_name}</td>
+                      <td>
+                        {fee.item_name}
+                        <div className="fee-note">
+                          (Minimum: $400.00, Applied: ${minimumFeeAdjusted.toFixed(2)})
+                        </div>
+                      </td>
+                      <td>${originalAmount.toFixed(2)}</td>
+                      <td>${minimumFeeAdjusted.toFixed(2)}</td>
+                      <td>{fee.override_reason || 'N/A'}</td>
+                    </tr>
+                  );
+                }
+                
                 return (
                   <tr key={index}>
                     <td>{fee.client_name}</td>
@@ -233,9 +257,15 @@ const InvoiceReview = () => {
             </tbody>
           </table>
           <div className="section-subtotal">
-            Recurring Fees Subtotal: ${invoice.recurring_fees.reduce((sum, fee) => 
-              sum + parseFloat(fee.invoiced_amount || 0), 0
-            ).toFixed(2)}
+            Recurring Fees Subtotal: ${invoice.recurring_fees.reduce((sum, fee) => {
+              if (fee.item_name === "Base Monthly Minimum") {
+                const otherFeesTotal = invoice.recurring_fees
+                  .filter(f => f.item_name !== "Base Monthly Minimum")
+                  .reduce((sum, f) => sum + parseFloat(f.invoiced_amount || 0), 0);
+                return sum + Math.max(0, 400 - otherFeesTotal);
+              }
+              return sum + parseFloat(fee.invoiced_amount || 0);
+            }, 0).toFixed(2)}
           </div>
         </>
       ) : <p>No recurring fees</p>}
