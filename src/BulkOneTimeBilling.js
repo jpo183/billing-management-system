@@ -36,7 +36,7 @@ const BulkOneTimeBilling = () => {
           const jsonData = XLSX.utils.sheet_to_json(sheet);
 
           // Send to bulk upload endpoint
-          const response = await fetch(`${API_URL}/bulk-addl-billings`, {
+          const response = await fetch(`${API_URL}/api/bulk-addl-billings`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
