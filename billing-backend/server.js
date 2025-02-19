@@ -1457,228 +1457,6 @@ console.log('✅ All routes registered');
 
 // Add these routes before app.listen()
 
-// Get draft invoices
-app.get("/api/invoices/draft", async (req, res) => {
-  try {
-    console.log('🔄 Fetching draft invoices...');
-    const result = await pool.query(
-      `SELECT 
-        im.id, 
-        im.invoice_number, 
-        im.partner_name, 
-        im.invoice_month, 
-        im.invoice_date, 
-        COALESCE(im.total_amount, 0)::numeric as total_amount, 
-        im.status, 
-        im.created_at
-       FROM invoice_master im
-       WHERE im.status = 'draft'
-       ORDER BY im.created_at DESC`
-    );
-    
-    console.log(`✅ Found ${result.rows.length} draft invoices:`, result.rows);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('❌ Error fetching draft invoices:', error);
-    res.status(500).json({ error: 'Failed to fetch draft invoices' });
-  }
-});
-
-// Void an invoice
-app.post("/api/invoices/:id/void", async (req, res) => {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    
-    console.log(`🗑️ Voiding invoice ${req.params.id}...`);
-
-    // First update the master record status
-    const result = await client.query(
-      `UPDATE invoice_master 
-       SET status = 'void'
-       WHERE id = $1 
-       RETURNING *`,
-      [req.params.id]
-    );
-
-    if (result.rows.length === 0) {
-      throw new Error('Invoice not found');
-    }
-
-    // Log the voided invoice details
-    console.log('📝 Voided invoice details:', {
-      invoice_id: result.rows[0].id,
-      invoice_number: result.rows[0].invoice_number,
-      status: result.rows[0].status
-    });
-
-    await client.query('COMMIT');
-    console.log('✅ Invoice voided successfully');
-    res.json({ 
-      success: true,
-      message: 'Invoice voided successfully',
-      invoice: result.rows[0]
-    });
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('❌ Error voiding invoice:', error);
-    res.status(500).json({ 
-      error: 'Failed to void invoice',
-      details: error.message 
-    });
-  } finally {
-    client.release();
-  }
-});
-
-// Get invoice details
-app.get("/api/invoices/:id", async (req, res) => {
-  const client = await pool.connect();
-  try {
-    console.log(`🔍 Fetching invoice ${req.params.id} details...`);
-    
-    // Get master record
-    const masterResult = await client.query(
-      `SELECT * FROM invoice_master WHERE id = $1`,
-      [req.params.id]
-    );
-
-    if (masterResult.rows.length === 0) {
-      throw new Error('Invoice not found');
-    }
-
-    // Get monthly fees
-    const monthlyResult = await client.query(
-      `SELECT * FROM invoice_monthly_fees WHERE invoice_id = $1`,
-      [req.params.id]
-    );
-
-    // Get recurring fees
-    const recurringResult = await client.query(
-      `SELECT * FROM invoice_recurring_fees WHERE invoice_id = $1`,
-      [req.params.id]
-    );
-
-    // Get one-time fees
-    const oneTimeResult = await client.query(
-      `SELECT * FROM invoice_one_time_fees WHERE invoice_id = $1`,
-      [req.params.id]
-    );
-
-    const invoice = {
-      ...masterResult.rows[0],
-      monthly_fees: monthlyResult.rows,
-      recurring_fees: recurringResult.rows,
-      one_time_fees: oneTimeResult.rows
-    };
-
-    console.log('✅ Invoice details fetched successfully');
-    res.json(invoice);
-  } catch (error) {
-    console.error('❌ Error fetching invoice details:', error);
-    res.status(500).json({ error: 'Failed to fetch invoice details' });
-  } finally {
-    client.release();
-  }
-});
-
-// Get monthly fees for an invoice
-app.get("/api/invoices/:id/monthly", async (req, res) => {
-  try {
-    console.log(`🔄 Fetching monthly fees for invoice ${req.params.id}...`);
-    const result = await pool.query(
-      `SELECT * FROM invoice_monthly_fees WHERE invoice_id = $1`,
-      [req.params.id]
-    );
-    
-    console.log(`✅ Found ${result.rows.length} monthly fees`);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('❌ Error fetching monthly fees:', error);
-    res.status(500).json({ error: 'Failed to fetch monthly fees' });
-  }
-});
-
-// Get recurring fees for an invoice
-app.get("/api/invoices/:id/recurring", async (req, res) => {
-  try {
-    console.log(`🔄 Fetching recurring fees for invoice ${req.params.id}...`);
-    const result = await pool.query(
-      `SELECT * FROM invoice_recurring_fees WHERE invoice_id = $1`,
-      [req.params.id]
-    );
-    
-    console.log(`✅ Found ${result.rows.length} recurring fees`);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('❌ Error fetching recurring fees:', error);
-    res.status(500).json({ error: 'Failed to fetch recurring fees' });
-  }
-});
-
-// Get one-time fees for an invoice
-app.get("/api/invoices/:id/onetime", async (req, res) => {
-  try {
-    console.log(`🔄 Fetching one-time fees for invoice ${req.params.id}...`);
-    const result = await pool.query(
-      `SELECT * FROM invoice_one_time_fees WHERE invoice_id = $1`,
-      [req.params.id]
-    );
-    
-    console.log(`✅ Found ${result.rows.length} one-time fees`);
-    res.json(result.rows);
-  } catch (error) {
-    console.error('❌ Error fetching one-time fees:', error);
-    res.status(500).json({ error: 'Failed to fetch one-time fees' });
-  }
-});
-
-// Finalize an invoice
-app.post("/api/invoices/:id/finalize", async (req, res) => {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    
-    console.log(`📝 Finalizing invoice ${req.params.id}...`);
-
-    // Update the invoice status to finalized
-    const result = await client.query(
-      `UPDATE invoice_master 
-       SET status = 'final'
-       WHERE id = $1 AND status = 'draft'
-       RETURNING *`,
-      [req.params.id]
-    );
-
-    if (result.rows.length === 0) {
-      throw new Error('Invoice not found or not in draft status');
-    }
-
-    // Log the finalized invoice details
-    console.log('✅ Finalized invoice details:', {
-      invoice_id: result.rows[0].id,
-      invoice_number: result.rows[0].invoice_number,
-      status: result.rows[0].status
-    });
-
-    await client.query('COMMIT');
-    res.json({ 
-      success: true,
-      message: 'Invoice finalized successfully',
-      invoice: result.rows[0]
-    });
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('❌ Error finalizing invoice:', error);
-    res.status(500).json({ 
-      error: 'Failed to finalize invoice',
-      details: error.message 
-    });
-  } finally {
-    client.release();
-  }
-});
-
 // Get finalized invoices with optional filters and pagination
 app.get("/api/invoices/final", async (req, res) => {
   try {
@@ -1695,33 +1473,7 @@ app.get("/api/invoices/final", async (req, res) => {
       offset
     });
 
-    // First get total count for pagination
-    let countQuery = `
-      SELECT COUNT(*) 
-      FROM invoice_master 
-      WHERE status = 'final'
-    `;
-
-    const countParams = [];
-    let paramCount = 1;
-
-    // Build count query with filters
-    if (partner_id && !isNaN(partner_id)) {
-      countQuery += ` AND partner_id = $${paramCount}`;
-      countParams.push(parseInt(partner_id, 10));
-      paramCount++;
-    }
-
-    console.log('🔢 Count query:', {
-      text: countQuery,
-      params: countParams
-    });
-
-    const countResult = await pool.query(countQuery, countParams);
-    const totalCount = parseInt(countResult.rows[0].count);
-    const totalPages = Math.ceil(totalCount / limit);
-
-    // Main query with pagination
+    // Build the base query
     let query = `
       WITH invoice_totals AS (
         SELECT 
@@ -1755,16 +1507,17 @@ app.get("/api/invoices/final", async (req, res) => {
         COALESCE(it.monthly_total, 0) as monthly_total,
         COALESCE(rt.recurring_total, 0) as recurring_total,
         COALESCE(ot.onetime_total, 0) as onetime_total,
-        im.total_amount as grand_total
+        im.total_amount as grand_total,
+        COUNT(*) OVER() as full_count
       FROM invoice_master im
       LEFT JOIN invoice_totals it ON im.id = it.invoice_id
       LEFT JOIN recurring_totals rt ON im.id = rt.invoice_id
       LEFT JOIN onetime_totals ot ON im.id = ot.invoice_id
-      WHERE im.status = 'final'
+      WHERE im.status = $1
     `;
 
-    const queryParams = [];
-    paramCount = 1;
+    const queryParams = ['final']; // First parameter is always 'final'
+    let paramCount = 2;
 
     if (partner_id && !isNaN(partner_id)) {
       query += ` AND im.partner_id = $${paramCount}`;
@@ -1791,20 +1544,30 @@ app.get("/api/invoices/final", async (req, res) => {
     `;
     queryParams.push(limit, offset);
 
-    console.log('🔍 Main query:', {
+    console.log('🔍 Executing query:', {
       text: query,
       params: queryParams
     });
 
     const result = await pool.query(query, queryParams);
-    console.log(`✅ Found ${result.rows.length} invoices for page ${page}`);
+    const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].full_count) : 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    console.log(`✅ Found ${result.rows.length} invoices for page ${page} of ${totalPages}`);
 
     if (result.rows.length > 0) {
-      console.log('📋 Sample result:', result.rows[0]);
+      console.log('📋 Sample result:', {
+        id: result.rows[0].id,
+        invoice_number: result.rows[0].invoice_number,
+        date: result.rows[0].invoice_date
+      });
     }
 
     res.json({
-      invoices: result.rows,
+      invoices: result.rows.map(row => {
+        const { full_count, ...invoice } = row;
+        return invoice;
+      }),
       pagination: {
         total: totalCount,
         totalPages,
