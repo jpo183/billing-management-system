@@ -116,7 +116,7 @@ export const logoutAndForceLogin = () => {
     localStorage.removeItem('userName');
     localStorage.removeItem('token');
 
-    window.location.href = "/login"; 
+    window.location.replace('/login');  // This is more React-friendly than href
 };
 
 
