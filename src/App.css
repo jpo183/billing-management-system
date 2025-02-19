@@ -1,29 +1,33 @@
 /* Modern Dark Pink Theme - Core Variables */
 :root {
-  /* Modern Color Palette */
-  --primary-pink: #FF4B8C;  /* Brighter, more modern pink */
-  --primary-pink-hover: #FF3377;
-  --light-pink: rgba(255, 75, 140, 0.1);
-  --dark-bg: #111827;  /* Modern dark blue-grey */
-  --darker-grey: #1F2937;
-  --dark-grey: #374151;
-  --medium-grey: #4B5563;
-  --light-grey: #9CA3AF;
-  --white: #FFFFFF;
+  /* Primary Brand Colors */
+  --primary-pink: #F7008C;    /* Pantone 225C */
+  --primary-pink-hover: #d1007a;  /* Slightly darker for hover states */
+  --light-pink: rgba(247, 0, 140, 0.1);  /* Primary pink with opacity */
   
-  /* Modern Shadows */
+  /* Neutral Colors */
+  --black: #000000;           /* Pantone Black C */
+  --white: #FFFFFF;           /* Pure white */
+  
+  /* UI Greys - derived from primary black */
+  --darker-grey: #1A1A1A;     /* 90% black */
+  --dark-grey: #262626;       /* 85% black */
+  --medium-grey: #404040;     /* 75% black */
+  --light-grey: #666666;      /* 60% black */
+  
+  /* Modern Shadows using brand colors */
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(247, 0, 140, 0.1);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);
   
-  /* Modern Transitions */
+  /* Transitions */
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body {
-  background-color: var(--dark-bg);
+  background-color: var(--black);
   color: var(--white);
-  font-family: 'Segoe UI', Arial, sans-serif;
+  font-family: 'Numans', 'Verdana', sans-serif;
   margin: 0;
   padding: 0;
   line-height: 1.6;
@@ -47,6 +51,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.5px;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  font-family: 'Numans', 'Verdana', sans-serif;
 }
 
 /* Navigation Button Grid */
@@ -552,4 +557,10 @@ input[type="text"]:focus {
 .field-desc {
   color: var(--light-grey);
   font-size: 0.9em;
+}
+
+/* Update headings */
+h1, h2, h3 {
+  font-family: 'Numans', 'Verdana', sans-serif;
+  font-weight: bold;
 }
