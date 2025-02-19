@@ -315,14 +315,14 @@ const handleGenerateInvoice = async () => {
    if (selectedPartner && startDate && endDate) {
     console.log('🔄 Fetching one-time billings...', { selectedPartner, startDate, endDate });
     
-    fetch(`${API_URL}/api/addl-billings/${selectedPartner}?start_date=${startDate}&end_date=${endDate}`)
+    fetch(`${API_URL}/api/addl-billings/${selectedPartner}`)
       .then(response => {
         if (!response.ok) throw new Error('Failed to fetch one-time billings');
         return response.json();
       })
       .then(data => {
         console.log('📊 Loaded one-time billings:', data);
-        setOneTimeBillings(data.length > 0 ? data : []);
+        setOneTimeBillings(data);
       })
       .catch(error => {
         console.error('❌ Error fetching one-time billings:', error);
@@ -465,6 +465,72 @@ const styles = {
     fontWeight: 'bold'
   }
 };
+
+// Add new useEffect for partner billing setup
+useEffect(() => {
+  if (selectedPartner) {
+    console.log('🔄 Fetching partner billing setup...', { selectedPartner });
+    
+    fetch(`${API_URL}/api/partner-billing/${selectedPartner}`)
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch partner billing setup');
+        return response.json();
+      })
+      .then(data => {
+        console.log('📊 Loaded partner billing setup:', data);
+        
+        // Find base EIN fee
+        const baseEinItem = data.find(item => item.billing_type === 'base_ein');
+        if (baseEinItem) {
+          console.log('💰 Found base EIN fee:', baseEinItem);
+          setBaseFee(baseEinItem);
+        }
+        
+        // Find per-employee fee
+        const perEmployeeItem = data.find(item => item.billing_type === 'per_employee');
+        if (perEmployeeItem) {
+          console.log('👥 Found per-employee fee:', perEmployeeItem);
+          setPerEmployeeFee(perEmployeeItem);
+          
+          // Fetch tiers if it exists
+          fetch(`${API_URL}/api/billing-tiers/${perEmployeeItem.id}`)
+            .then(response => response.json())
+            .then(tiers => {
+              console.log('📊 Loaded employee tiers:', tiers);
+              setEmployeeTiers(tiers);
+            })
+            .catch(error => {
+              console.error('❌ Error fetching employee tiers:', error);
+              setEmployeeTiers([]);
+            });
+        }
+        
+        // Find monthly minimum fee
+        const monthlyMinItem = data.find(item => item.billing_type === 'monthly_min');
+        if (monthlyMinItem) {
+          console.log('💵 Found monthly minimum fee:', monthlyMinItem);
+          setMonthlyMinFee(monthlyMinItem);
+        }
+        
+        // Set recurring billings
+        const recurringItems = data.filter(item => 
+          item.billing_type !== 'base_ein' && 
+          item.billing_type !== 'per_employee' &&
+          item.billing_type !== 'monthly_min'
+        );
+        console.log('🔄 Found recurring items:', recurringItems);
+        setRecurringPartnerBilling(recurringItems);
+      })
+      .catch(error => {
+        console.error('❌ Error fetching partner billing setup:', error);
+        setBaseFee(null);
+        setPerEmployeeFee(null);
+        setMonthlyMinFee(null);
+        setRecurringPartnerBilling([]);
+        setEmployeeTiers([]);
+      });
+  }
+}, [selectedPartner]);
 
  return (
    <div className="container">
