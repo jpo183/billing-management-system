@@ -19,6 +19,7 @@ import ProtectedRoute from './ProtectedRoute';
 import Login from './Login';
 import ErrorBoundary from './ErrorBoundary';
 import "./App.css";
+import { logoutAndForceLogin } from './Login';
 
 function App() {
   const userRole = localStorage.getItem('userRole');
@@ -59,6 +60,12 @@ function App() {
         <Route path="/invoice-print/:invoiceId" element={<ProtectedRoute element={<InvoicePrint />} route="finalized-invoices" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <button 
+        className="top-right" 
+        onClick={logoutAndForceLogin}
+      >
+        Logout
+      </button>
     </ErrorBoundary>
   );
 }
