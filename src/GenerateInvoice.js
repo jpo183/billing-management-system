@@ -568,18 +568,15 @@ useEffect(() => {
 {monthlyData.length > 0 ? (
   <>
  {selectedMonthlyItems.length > 0 && (() => {
-  // Define selectedClients within this scope
   const selectedClients = monthlyData.filter(item => selectedMonthlyItems.includes(item.client_code));
-  
-  // Find the partner for the current selection
   const partner = partners.find(p => p.id === parseInt(selectedPartner));
 
-  // Calculate total base EIN fees across ALL selected clients
+  // Calculate ONLY base EIN fees (not including per-employee fees)
   const totalBaseEINFeesAcrossClients = selectedClients.reduce((total, item) => {
     const isActive = item.is_pay_group_active;
     const baseAmount = isActive ? parseFloat(baseFee?.amount || 0) : 0;
-    const employeeFeeAmount = isActive ? calculateTieredFee(item.total_active_employees) : 0;
-    return total + (baseAmount + employeeFeeAmount);
+    // Remove per-employee fees from this calculation
+    return total + baseAmount;
   }, 0);
 
   const minFeeAmount = parseFloat(monthlyMinFee?.amount || 0);
@@ -587,41 +584,11 @@ useEffect(() => {
     ? (minFeeAmount - totalBaseEINFeesAcrossClients) 
     : 0;
 
-// Update or create monthly minimum fee if applicable
-const existingMinFeeIndex = recurringPartnerBilling.findIndex(item => 
-  item.billing_type === 'monthly_min' || item.item_name === monthlyMinFee?.item_name
-);
-
-if (monthlyMinBilledTotal > 0 && partner && monthlyMinFee) {
-  const minFeeItem = {
-    id: monthlyMinFee.id,
-    partner_id: parseInt(selectedPartner),
-    partner_code: partner.partner_code,
-    client_name: 'Monthly Minimum Fee',
-    item_name: monthlyMinFee.item_name,
-    item_code: monthlyMinFee.item_code || '',
-    billing_item_id: monthlyMinFee.id,
-    amount: monthlyMinBilledTotal,
-    billing_frequency: 'monthly',
-    billing_type: 'monthly_min'
-  };
-
-  if (existingMinFeeIndex >= 0) {
-    // Update existing monthly minimum fee
-    recurringPartnerBilling[existingMinFeeIndex] = minFeeItem;
-  } else {
-    // Add monthly minimum fee for the first time
-    recurringPartnerBilling.unshift(minFeeItem); // Add to beginning of array
-  }
-} else if (existingMinFeeIndex >= 0) {
-  // Remove monthly minimum fee if it exists but is no longer needed
-  recurringPartnerBilling.splice(existingMinFeeIndex, 1);
-}
-
+  // Update the display to show only base fees in comparison
   return (
     <div className="billing-summary" style={{ marginBottom: '20px', padding: '10px', border: '1px solid #ccc' }}>
       <h4>Monthly Minimum Fee Comparison</h4>
-      <p>Total Base EIN Fees: ${totalBaseEINFeesAcrossClients.toFixed(2)}</p>
+      <p>Total Base EIN Fees Only: ${totalBaseEINFeesAcrossClients.toFixed(2)}</p>
       <p>Monthly Minimum Threshold: ${minFeeAmount.toFixed(2)}</p>
       {monthlyMinBilledTotal > 0 && (
         <p style={{ fontWeight: 'bold', color: '#d32f2f' }}>
