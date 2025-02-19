@@ -1301,14 +1301,23 @@ app.post("/api/generate-invoice", async (req, res) => {
       throw new Error('Missing required fields: partner_id, partner_code, invoice_month, invoice_date');
     }
 
-    // Create invoice master record
+    // Create invoice master record with generated invoice number
     const invoiceMasterResult = await client.query(
       `INSERT INTO invoice_master (
-        partner_id, partner_code, partner_name, invoice_date, 
+        invoice_number, partner_id, partner_code, partner_name, invoice_date, 
         invoice_month, status, created_at
-      ) VALUES ($1, $2, $3, $4, $5, 'draft', CURRENT_TIMESTAMP)
+      ) VALUES (
+        CONCAT('INV-', $1, '-', TO_CHAR(CURRENT_DATE, 'YYYYMM'), '-', 
+               LPAD(COALESCE((
+                 SELECT COUNT(*) + 1 
+                 FROM invoice_master 
+                 WHERE partner_code = $1 
+                 AND TO_CHAR(created_at, 'YYYYMM') = TO_CHAR(CURRENT_DATE, 'YYYYMM')
+               )::text, '1'), 3, '0')),
+        $2, $1, $3, $4, $5, 'draft', CURRENT_TIMESTAMP
+      )
       RETURNING id`,
-      [partner_id, partner_code, partner_name, invoice_date, invoice_month]
+      [partner_code, partner_id, partner_name, invoice_date, invoice_month]
     );
 
     const invoice_id = invoiceMasterResult.rows[0].id;
