@@ -1680,17 +1680,83 @@ app.post("/api/invoices/:id/finalize", async (req, res) => {
   }
 });
 
-// Get finalized invoices with filters
+// Get finalized invoices with optional filters and pagination
 app.get("/api/invoices/final", async (req, res) => {
   try {
-    const { partner_id, from_date, to_date } = req.query;
-    console.log('🔍 Fetching finalized invoices with filters:', { 
+    const { partner_id, from_date, to_date, page = 1, limit = 25 } = req.query;
+    const offset = (page - 1) * limit;
+
+    console.log('🔍 Starting finalized invoices fetch:', { 
       partner_id: partner_id || 'none', 
       from_date: from_date || 'none', 
-      to_date: to_date || 'none' 
+      to_date: to_date || 'none',
+      page,
+      limit,
+      offset
     });
 
+    // First get total count for pagination
+    let countQuery = `
+      SELECT COUNT(*) 
+      FROM invoice_master im
+      WHERE im.status = 'final'
+    `;
+
+    const countParams = [];
+    let paramCount = 1;
+
+    if (partner_id && !isNaN(partner_id)) {
+      countQuery += ` AND im.partner_id = $${paramCount}`;
+      countParams.push(parseInt(partner_id, 10));
+      paramCount++;
+    }
+
+    if (from_date && isValidDate(from_date)) {
+      countQuery += ` AND im.invoice_date >= $${paramCount}::date`;
+      countParams.push(from_date);
+      paramCount++;
+    }
+
+    if (to_date && isValidDate(to_date)) {
+      countQuery += ` AND im.invoice_date <= $${paramCount}::date`;
+      countParams.push(to_date);
+      paramCount++;
+    }
+
+    const countResult = await pool.query(countQuery, countParams);
+    const totalCount = parseInt(countResult.rows[0].count);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    console.log('📊 Pagination info:', {
+      totalRecords: totalCount,
+      totalPages,
+      currentPage: page,
+      limit
+    });
+
+    // Main query with pagination
     let query = `
+      WITH invoice_totals AS (
+        SELECT 
+          invoice_id,
+          SUM(total_monthly_fee) as monthly_total
+        FROM invoice_monthly_fees
+        GROUP BY invoice_id
+      ),
+      recurring_totals AS (
+        SELECT 
+          invoice_id,
+          SUM(invoiced_amount) as recurring_total
+        FROM invoice_recurring_fees
+        GROUP BY invoice_id
+      ),
+      onetime_totals AS (
+        SELECT 
+          invoice_id,
+          SUM(invoiced_amount) as onetime_total
+        FROM invoice_one_time_fees
+        GROUP BY invoice_id
+      )
       SELECT 
         im.id,
         im.invoice_number,
@@ -1699,19 +1765,20 @@ app.get("/api/invoices/final", async (req, res) => {
         im.invoice_month,
         im.status,
         im.total_amount,
-        COALESCE(SUM(imf.total_monthly_fee), 0) as monthly_total,
-        COALESCE((SELECT SUM(irf.invoiced_amount) FROM invoice_recurring_fees irf WHERE irf.invoice_id = im.id), 0) as recurring_total,
-        COALESCE((SELECT SUM(iotf.invoiced_amount) FROM invoice_one_time_fees iotf WHERE iotf.invoice_id = im.id), 0) as onetime_total,
+        COALESCE(it.monthly_total, 0) as monthly_total,
+        COALESCE(rt.recurring_total, 0) as recurring_total,
+        COALESCE(ot.onetime_total, 0) as onetime_total,
         im.total_amount as grand_total
       FROM invoice_master im
-      LEFT JOIN invoice_monthly_fees imf ON im.id = imf.invoice_id
+      LEFT JOIN invoice_totals it ON im.id = it.invoice_id
+      LEFT JOIN recurring_totals rt ON im.id = rt.invoice_id
+      LEFT JOIN onetime_totals ot ON im.id = ot.invoice_id
       WHERE im.status = 'final'
     `;
 
     const queryParams = [];
-    let paramCount = 1;
+    paramCount = 1;
 
-    // Add partner_id filter if provided and valid
     if (partner_id && !isNaN(partner_id)) {
       console.log('📋 Adding partner filter:', partner_id);
       query += ` AND im.partner_id = $${paramCount}`;
@@ -1719,62 +1786,72 @@ app.get("/api/invoices/final", async (req, res) => {
       paramCount++;
     }
 
-    // Add date filters if provided
-    if (from_date) {
+    if (from_date && isValidDate(from_date)) {
       console.log('📅 Adding from_date filter:', from_date);
-      query += ` AND im.invoice_date >= $${paramCount}`;
+      query += ` AND im.invoice_date >= $${paramCount}::date`;
       queryParams.push(from_date);
       paramCount++;
     }
 
-    if (to_date) {
+    if (to_date && isValidDate(to_date)) {
       console.log('📅 Adding to_date filter:', to_date);
-      query += ` AND im.invoice_date <= $${paramCount}`;
+      query += ` AND im.invoice_date <= $${paramCount}::date`;
       queryParams.push(to_date);
       paramCount++;
     }
 
+    // Add pagination
     query += ` 
-      GROUP BY 
-        im.id, 
-        im.invoice_number,
-        im.partner_name,
-        im.invoice_date,
-        im.invoice_month,
-        im.status,
-        im.total_amount
-      ORDER BY im.invoice_date DESC
+      ORDER BY im.invoice_date DESC, im.invoice_number DESC
+      LIMIT $${paramCount} OFFSET $${paramCount + 1}
     `;
+    queryParams.push(limit, offset);
 
     console.log('🔍 Executing query:', {
       text: query,
+      paramCount: queryParams.length,
       params: queryParams
     });
 
     const result = await pool.query(query, queryParams);
-    console.log(`✅ Found ${result.rows.length} finalized invoices`);
-    
-    // Log sample of results
+    console.log(`✅ Found ${result.rows.length} invoices for page ${page}`);
+
+    // Log first and last result for verification
     if (result.rows.length > 0) {
-      console.log('📋 Sample invoice:', {
+      console.log('📋 First invoice on page:', {
         id: result.rows[0].id,
         invoice_number: result.rows[0].invoice_number,
-        totals: {
-          monthly: result.rows[0].monthly_total,
-          recurring: result.rows[0].recurring_total,
-          onetime: result.rows[0].onetime_total,
-          grand: result.rows[0].grand_total
-        }
+        date: result.rows[0].invoice_date
       });
+
+      if (result.rows.length > 1) {
+        const last = result.rows[result.rows.length - 1];
+        console.log('📋 Last invoice on page:', {
+          id: last.id,
+          invoice_number: last.invoice_number,
+          date: last.invoice_date
+        });
+      }
     }
 
-    res.json(result.rows);
+    res.json({
+      invoices: result.rows,
+      pagination: {
+        total: totalCount,
+        totalPages,
+        currentPage: parseInt(page),
+        limit: parseInt(limit),
+        hasMore: page < totalPages
+      }
+    });
   } catch (error) {
     console.error('❌ Error fetching finalized invoices:', {
       message: error.message,
       stack: error.stack,
       query: error.query,
-      parameters: error.parameters
+      parameters: error.parameters,
+      code: error.code,
+      detail: error.detail
     });
     res.status(500).json({ 
       error: 'Failed to fetch finalized invoices',
@@ -1782,6 +1859,12 @@ app.get("/api/invoices/final", async (req, res) => {
     });
   }
 });
+
+// Helper function to validate date strings
+function isValidDate(dateString) {
+  const date = new Date(dateString);
+  return date instanceof Date && !isNaN(date);
+}
 
 // Update invoice status (for reopening finalized invoices)
 app.put("/api/invoices/:id/status", async (req, res) => {
