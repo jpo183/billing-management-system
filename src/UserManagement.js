@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
     const apiUrl = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
 
     // Add this useEffect for environment logging
@@ -55,6 +57,9 @@ const UserManagement = () => {
     return (
         <div>
             <h2>User Management</h2>
+            <button className="back-button" onClick={() => navigate("/")}>
+                Back to Main Menu
+            </button>
             {error && <div className="error">{error}</div>}
             <table>
                 <thead>
