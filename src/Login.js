@@ -105,14 +105,11 @@ const handleCredentialResponse = async (response) => {
 // log out
 export const logoutAndForceLogin = () => {
     console.log("🔄 Starting logout process...");
-    console.log("📍 Current location:", window.location.href);
     
     const googleAuthInstance = window.google?.accounts?.id;
     if (googleAuthInstance) {
         console.log("🔑 Disabling Google auto-select...");
         googleAuthInstance.disableAutoSelect();
-    } else {
-        console.log("⚠️ No Google auth instance found");
     }
 
     console.log("🗑️ Clearing localStorage...");
@@ -121,10 +118,8 @@ export const logoutAndForceLogin = () => {
     localStorage.removeItem('userName');
     localStorage.removeItem('token');
 
-    const redirectUrl = `${window.location.origin}/login`;
-    console.log("🔀 Attempting redirect to:", redirectUrl);
-    
-    window.location.href = redirectUrl;
+    // Use the same pattern as login
+    window.location.href = "/login";
     console.log("↪️ Redirect initiated");
 };
 
