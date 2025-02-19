@@ -178,8 +178,23 @@ const handleGenerateInvoice = async () => {
           item_code: monthlyMinFee.item_code || '',
           billing_item_id: monthlyMinFee.id,
           original_amount: monthlyMinFee.amount,
-          invoiced_amount: monthlyMinFee.amount,
-          override_reason: null,
+          invoiced_amount: (() => {
+            // Calculate the actual billed amount
+            const selectedClients = monthlyData.filter(item => 
+              selectedMonthlyItems.includes(item.client_code)
+            );
+            const totalBaseEINFees = selectedClients.reduce((total, item) => {
+              const isActive = item.is_pay_group_active;
+              const baseAmount = isActive ? parseFloat(baseFee?.amount || 0) : 0;
+              return total + baseAmount;
+            }, 0);
+            
+            const minFeeAmount = parseFloat(monthlyMinFee.amount || 0);
+            return minFeeAmount > totalBaseEINFees 
+              ? (minFeeAmount - totalBaseEINFees) 
+              : 0;
+          })(),
+          override_reason: 'Monthly minimum fee adjustment',
           billing_frequency: 'monthly'
         }] : []),
 
