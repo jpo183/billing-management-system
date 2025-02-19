@@ -118,8 +118,8 @@ export const logoutAndForceLogin = () => {
     localStorage.removeItem('userName');
     localStorage.removeItem('token');
 
-    // Use the same pattern as login
-    window.location.href = "/login";
+    // Use the full Render.com URL
+    window.location.href = "https://billing-system-frontend.onrender.com/login";
     console.log("↪️ Redirect initiated");
 };
 
