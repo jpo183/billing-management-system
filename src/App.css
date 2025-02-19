@@ -453,3 +453,12 @@ input[type="text"]:focus {
 .role-select.user {
     border-color: #6c757d;
 }
+
+.section-subtotal {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: var(--darker-grey);
+  border-radius: 4px;
+  text-align: right;
+  font-weight: bold;
+}
