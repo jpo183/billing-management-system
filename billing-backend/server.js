@@ -1415,7 +1415,10 @@ app.post("/api/generate-invoice", async (req, res) => {
     // Calculate and update total amount
     const totalResult = await client.query(
       `SELECT 
-        COALESCE(SUM(total_monthly_fee), 0) as monthly_total,
+        COALESCE(SUM(CASE 
+          WHEN is_pay_group_active THEN base_fee_amount + per_employee_fee_amount 
+          ELSE 0 
+        END), 0) as monthly_total,
         (SELECT COALESCE(SUM(invoiced_amount), 0) FROM invoice_recurring_fees WHERE invoice_id = $1) as recurring_total,
         (SELECT COALESCE(SUM(invoiced_amount), 0) FROM invoice_one_time_fees WHERE invoice_id = $1) as onetime_total
       FROM invoice_monthly_fees 
