@@ -241,15 +241,18 @@ const InvoiceReview = () => {
                 
                 // Special handling for Base Monthly Minimum
                 if (fee.item_name === "Base Monthly Minimum") {
-                  const otherFeesTotal = invoice.recurring_fees
-                    .filter(f => f.item_name !== "Base Monthly Minimum")
-                    .reduce((sum, f) => {
-                      console.log(`Adding to other fees total: ${f.item_name} = ${f.invoiced_amount}`);
-                      return sum + parseFloat(f.invoiced_amount || 0);
+                  // Calculate total of ONLY base fees from active clients
+                  const baseFeesTotal = invoice.monthly_fees
+                    .filter(fee => fee.is_pay_group_active)
+                    .reduce((sum, fee) => {
+                      const baseFee = parseFloat(fee.base_fee_amount || 0);
+                      console.log(`Including base fee for ${fee.client_name}:`, baseFee);
+                      return sum + baseFee;
                     }, 0);
+
+                  console.log('Total base fees:', baseFeesTotal);
                   
-                  console.log('Other fees total:', otherFeesTotal);
-                  const minimumFeeAdjusted = Math.max(0, 400 - otherFeesTotal);
+                  const minimumFeeAdjusted = Math.max(0, 400 - baseFeesTotal);
                   console.log('Adjusted minimum fee:', minimumFeeAdjusted);
                   
                   return (
@@ -258,7 +261,7 @@ const InvoiceReview = () => {
                       <td>
                         {fee.item_name}
                         <div className="fee-note">
-                          (Minimum: $400.00, Applied: ${minimumFeeAdjusted.toFixed(2)})
+                          (Base Fees Total: ${baseFeesTotal.toFixed(2)}, Minimum: $400.00, Applied: ${minimumFeeAdjusted.toFixed(2)})
                         </div>
                       </td>
                       <td>${originalAmount.toFixed(2)}</td>
@@ -283,10 +286,11 @@ const InvoiceReview = () => {
           <div className="section-subtotal">
             Recurring Fees Subtotal: ${invoice.recurring_fees.reduce((sum, fee) => {
               if (fee.item_name === "Base Monthly Minimum") {
-                const otherFeesTotal = invoice.recurring_fees
-                  .filter(f => f.item_name !== "Base Monthly Minimum")
-                  .reduce((sum, f) => sum + parseFloat(f.invoiced_amount || 0), 0);
-                return sum + Math.max(0, 400 - otherFeesTotal);
+                const baseFeesTotal = invoice.monthly_fees
+                  .filter(fee => fee.is_pay_group_active)
+                  .reduce((sum, fee) => sum + parseFloat(fee.base_fee_amount || 0), 0);
+                
+                return sum + Math.max(0, 400 - baseFeesTotal);
               }
               return sum + parseFloat(fee.invoiced_amount || 0);
             }, 0).toFixed(2)}
