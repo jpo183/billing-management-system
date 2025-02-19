@@ -1307,21 +1307,28 @@ app.post("/api/generate-invoice", async (req, res) => {
         invoice_number, partner_id, partner_code, partner_name, invoice_date, 
         invoice_month, status, created_at
       ) VALUES (
-        CONCAT('INV-', $1, '-', TO_CHAR(CURRENT_DATE, 'YYYYMM'), '-', 
-               LPAD(COALESCE((
-                 SELECT COUNT(*) + 1 
-                 FROM invoice_master 
-                 WHERE partner_code = $1 
-                 AND TO_CHAR(created_at, 'YYYYMM') = TO_CHAR(CURRENT_DATE, 'YYYYMM')
-               )::text, '1'), 3, '0')),
+        CONCAT('INV-', 
+              $1::text, 
+              '-', 
+              TO_CHAR(CURRENT_DATE, 'YYYYMM'), 
+              '-',
+              LPAD(COALESCE((
+                SELECT COUNT(*) + 1 
+                FROM invoice_master 
+                WHERE partner_code = $1 
+                AND TO_CHAR(created_at, 'YYYYMM') = TO_CHAR(CURRENT_DATE, 'YYYYMM')
+              )::text, '1'), 3, '0')),
         $2, $1, $3, $4, $5, 'draft', CURRENT_TIMESTAMP
       )
-      RETURNING id`,
+      RETURNING id, invoice_number`,
       [partner_code, partner_id, partner_name, invoice_date, invoice_month]
     );
 
     const invoice_id = invoiceMasterResult.rows[0].id;
-    console.log('📄 Created invoice master record:', invoice_id);
+    console.log('📄 Created invoice master record:', {
+      id: invoice_id,
+      invoice_number: invoiceMasterResult.rows[0].invoice_number
+    });
 
     // Insert monthly fees
     if (monthly_fees?.length > 0) {
