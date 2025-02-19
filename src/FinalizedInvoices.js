@@ -37,14 +37,22 @@ const FinalizedInvoices = () => {
       url += `to_date=${toDate}&`;
     }
 
+    console.log('🔍 Fetching finalized invoices from:', url);
+
     try {
       const response = await fetch(url);
       const data = await response.json();
       
-      // Ensure data is an array, even if it's empty or undefined
-      setInvoices(Array.isArray(data) ? data : []);
+      console.log('📥 Raw response data:', data);
+      console.log('📊 Invoices array:', data.invoices);
+      console.log('📄 Pagination info:', data.pagination);
+      
+      // Access the invoices array from the response
+      setInvoices(data.invoices || []);
+      
+      console.log('✅ Updated invoices state:', data.invoices || []);
     } catch (error) {
-      console.error("Error fetching invoices:", error);
+      console.error("❌ Error fetching invoices:", error);
       setInvoices([]);  // Set to empty array on error
     } finally {
       setLoading(false);
