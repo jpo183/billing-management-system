@@ -29,3 +29,4 @@ billing-backend/db/essential_data.sql
 # Exclude sensitive data
 monthly_billing_data/
 additional_billing_data/
+!billing-backend/db/schemas/*.sql  # Allow schema files to be versioned

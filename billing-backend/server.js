@@ -1076,8 +1076,6 @@ app.delete("/api/billing-tiers/:id", async (req, res) => {
   }
 });
 
-// Add these routes after your existing routes
-
 // GET client billings for a partner
 app.get("/api/client-billings/:partnerId", async (req, res) => {
   try {
@@ -1270,6 +1268,177 @@ app.get("/api/partners/:id/details", async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch partner details' });
   }
 });
+
+// Debug log to confirm route registration
+console.log('🔄 Registering generate-invoice endpoint...');
+
+app.post("/api/generate-invoice", async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    console.log('📝 Generate Invoice Request:', {
+      body: req.body,
+      headers: req.headers,
+      path: req.path
+    });
+
+    await client.query('BEGIN');
+    console.log('🔄 Starting invoice generation process');
+
+    const {
+      partner_id,
+      partner_code,
+      partner_name,
+      invoice_month,
+      invoice_date,
+      monthly_fees,
+      recurring_fees,
+      one_time_fees
+    } = req.body;
+
+    // Validate required fields
+    if (!partner_id || !partner_code || !invoice_month || !invoice_date) {
+      throw new Error('Missing required fields: partner_id, partner_code, invoice_month, invoice_date');
+    }
+
+    // Create invoice master record
+    const invoiceMasterResult = await client.query(
+      `INSERT INTO invoice_master (
+        partner_id, partner_code, partner_name, invoice_date, 
+        invoice_month, status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, 'draft', CURRENT_TIMESTAMP)
+      RETURNING id`,
+      [partner_id, partner_code, partner_name, invoice_date, invoice_month]
+    );
+
+    const invoice_id = invoiceMasterResult.rows[0].id;
+    console.log('📄 Created invoice master record:', invoice_id);
+
+    // Insert monthly fees
+    if (monthly_fees?.length > 0) {
+      console.log(`💰 Processing ${monthly_fees.length} monthly fees`);
+      for (const fee of monthly_fees) {
+        await client.query(
+          `INSERT INTO invoice_monthly_fees (
+            invoice_id, partner_id, partner_code, client_code, client_name, 
+            is_pay_group_active, total_active_employees, 
+            base_fee_amount, per_employee_fee_amount, total_monthly_fee
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [
+            invoice_id,
+            partner_id,
+            partner_code,
+            fee.client_code,
+            fee.client_name,
+            fee.is_pay_group_active,
+            fee.total_active_employees,
+            fee.base_fee_amount,
+            fee.per_employee_fee_amount,
+            fee.total_monthly_fee
+          ]
+        );
+      }
+    }
+
+    // Insert recurring fees
+    if (recurring_fees?.length > 0) {
+      console.log(`💰 Processing ${recurring_fees.length} recurring fees`);
+      for (const fee of recurring_fees) {
+        await client.query(
+          `INSERT INTO invoice_recurring_fees (
+            invoice_id, partner_billing_id, partner_id, partner_code, 
+            client_name, item_name, item_code, billing_item_id,
+            original_amount, invoiced_amount, override_reason, billing_frequency
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          [
+            invoice_id,
+            fee.partner_billing_id,
+            partner_id,
+            partner_code,
+            fee.client_name,
+            fee.item_name,
+            fee.item_code,
+            fee.billing_item_id,
+            fee.original_amount,
+            fee.invoiced_amount,
+            fee.override_reason,
+            fee.billing_frequency
+          ]
+        );
+      }
+    }
+
+    // Insert one-time fees
+    if (one_time_fees?.length > 0) {
+      console.log(`💰 Processing ${one_time_fees.length} one-time fees`);
+      for (const fee of one_time_fees) {
+        await client.query(
+          `INSERT INTO invoice_one_time_fees (
+            invoice_id, addl_billing_id, partner_id, partner_code,
+            client_name, item_name, item_code, billing_item_id,
+            billing_date, original_amount, invoiced_amount, override_reason
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          [
+            invoice_id,
+            fee.addl_billing_id,
+            partner_id,
+            partner_code,
+            fee.client_name,
+            fee.item_name,
+            fee.item_code,
+            fee.billing_item_id,
+            fee.billing_date,
+            fee.original_amount,
+            fee.invoiced_amount,
+            fee.override_reason
+          ]
+        );
+      }
+    }
+
+    // Calculate and update total amount
+    const totalResult = await client.query(
+      `SELECT 
+        COALESCE(SUM(total_monthly_fee), 0) as monthly_total,
+        (SELECT COALESCE(SUM(invoiced_amount), 0) FROM invoice_recurring_fees WHERE invoice_id = $1) as recurring_total,
+        (SELECT COALESCE(SUM(invoiced_amount), 0) FROM invoice_one_time_fees WHERE invoice_id = $1) as onetime_total
+      FROM invoice_monthly_fees 
+      WHERE invoice_id = $1`,
+      [invoice_id]
+    );
+
+    const total = parseFloat(totalResult.rows[0].monthly_total) +
+                 parseFloat(totalResult.rows[0].recurring_total) +
+                 parseFloat(totalResult.rows[0].onetime_total);
+
+    await client.query(
+      `UPDATE invoice_master SET total_amount = $1 WHERE id = $2`,
+      [total, invoice_id]
+    );
+
+    await client.query('COMMIT');
+    console.log('✅ Invoice generation completed successfully');
+    
+    res.status(201).json({
+      success: true,
+      message: "Invoice generated successfully",
+      invoice_id: invoice_id,
+      total_amount: total
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error generating invoice:', error);
+    res.status(500).json({ 
+      error: "Failed to generate invoice",
+      details: error.message
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// Make sure this is at the end of all route definitions
+console.log('✅ All routes registered');
 
 // Start server
 app.listen(port, () => {
