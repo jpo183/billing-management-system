@@ -62,7 +62,10 @@ function App() {
       </Routes>
       <button 
         className="top-right" 
-        onClick={logoutAndForceLogin}
+        onClick={() => {
+          console.log("🔘 Logout button clicked");
+          logoutAndForceLogin();
+        }}
       >
         Logout
       </button>

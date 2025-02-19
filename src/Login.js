@@ -104,20 +104,28 @@ const handleCredentialResponse = async (response) => {
 
 // log out
 export const logoutAndForceLogin = () => {
-    console.log("Forcing Google Logout...");
+    console.log("🔄 Starting logout process...");
+    console.log("📍 Current location:", window.location.href);
     
     const googleAuthInstance = window.google?.accounts?.id;
     if (googleAuthInstance) {
+        console.log("🔑 Disabling Google auto-select...");
         googleAuthInstance.disableAutoSelect();
+    } else {
+        console.log("⚠️ No Google auth instance found");
     }
 
+    console.log("🗑️ Clearing localStorage...");
     localStorage.removeItem('userRole');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userName');
     localStorage.removeItem('token');
 
-    // Redirect to the frontend login page
-    window.location.href = `${window.location.origin}/login`;
+    const redirectUrl = `${window.location.origin}/login`;
+    console.log("🔀 Attempting redirect to:", redirectUrl);
+    
+    window.location.href = redirectUrl;
+    console.log("↪️ Redirect initiated");
 };
 
 
