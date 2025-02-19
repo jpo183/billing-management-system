@@ -64,7 +64,11 @@ const UnfinalizedInvoices = () => {
                 <td>{invoice.partner_name}</td>
                 <td>{invoice.invoice_month}</td>
                 <td>{new Date(invoice.invoice_date).toLocaleDateString()}</td>
-                <td>${invoice.total_amount?.toFixed(2) || '0.00'}</td>
+                <td>
+                  ${typeof invoice.total_amount === 'number' 
+                    ? invoice.total_amount.toFixed(2) 
+                    : parseFloat(invoice.total_amount || 0).toFixed(2)}
+                </td>
                 <td>{invoice.status}</td>
                 <td>
                   <button

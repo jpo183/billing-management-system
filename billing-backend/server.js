@@ -1464,15 +1464,20 @@ app.get("/api/invoices/draft", async (req, res) => {
     console.log('🔄 Fetching draft invoices...');
     const result = await pool.query(
       `SELECT 
-        im.id, im.invoice_number, im.partner_name, 
-        im.invoice_month, im.invoice_date, im.total_amount, 
-        im.status, im.created_at
+        im.id, 
+        im.invoice_number, 
+        im.partner_name, 
+        im.invoice_month, 
+        im.invoice_date, 
+        COALESCE(im.total_amount, 0)::numeric as total_amount, 
+        im.status, 
+        im.created_at
        FROM invoice_master im
        WHERE im.status = 'draft'
        ORDER BY im.created_at DESC`
     );
     
-    console.log(`✅ Found ${result.rows.length} draft invoices`);
+    console.log(`✅ Found ${result.rows.length} draft invoices:`, result.rows);
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Error fetching draft invoices:', error);
