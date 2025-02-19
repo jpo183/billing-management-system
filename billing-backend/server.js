@@ -1568,6 +1568,57 @@ app.get("/api/invoices/:id", async (req, res) => {
   }
 });
 
+// Get monthly fees for an invoice
+app.get("/api/invoices/:id/monthly", async (req, res) => {
+  try {
+    console.log(`🔄 Fetching monthly fees for invoice ${req.params.id}...`);
+    const result = await pool.query(
+      `SELECT * FROM invoice_monthly_fees WHERE invoice_id = $1`,
+      [req.params.id]
+    );
+    
+    console.log(`✅ Found ${result.rows.length} monthly fees`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching monthly fees:', error);
+    res.status(500).json({ error: 'Failed to fetch monthly fees' });
+  }
+});
+
+// Get recurring fees for an invoice
+app.get("/api/invoices/:id/recurring", async (req, res) => {
+  try {
+    console.log(`🔄 Fetching recurring fees for invoice ${req.params.id}...`);
+    const result = await pool.query(
+      `SELECT * FROM invoice_recurring_fees WHERE invoice_id = $1`,
+      [req.params.id]
+    );
+    
+    console.log(`✅ Found ${result.rows.length} recurring fees`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching recurring fees:', error);
+    res.status(500).json({ error: 'Failed to fetch recurring fees' });
+  }
+});
+
+// Get one-time fees for an invoice
+app.get("/api/invoices/:id/onetime", async (req, res) => {
+  try {
+    console.log(`🔄 Fetching one-time fees for invoice ${req.params.id}...`);
+    const result = await pool.query(
+      `SELECT * FROM invoice_one_time_fees WHERE invoice_id = $1`,
+      [req.params.id]
+    );
+    
+    console.log(`✅ Found ${result.rows.length} one-time fees`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching one-time fees:', error);
+    res.status(500).json({ error: 'Failed to fetch one-time fees' });
+  }
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
