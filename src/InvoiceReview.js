@@ -143,14 +143,20 @@ const InvoiceReview = () => {
             <tbody>
               {invoice.monthly_fees
                 .filter(fee => fee.is_pay_group_active)
-                .map((fee, index) => (
-                  <tr key={index}>
-                    <td>{fee.client_name}</td>
-                    <td>${fee.base_fee_amount}</td>
-                    <td>${fee.per_employee_fee_amount}</td>
-                    <td>${fee.total_monthly_fee}</td>
-                  </tr>
-                ))}
+                .map((fee, index) => {
+                  const baseFee = parseFloat(fee.base_fee_amount || 0);
+                  const perEmployeeFee = parseFloat(fee.per_employee_fee_amount || 0);
+                  const total = baseFee + perEmployeeFee;
+
+                  return (
+                    <tr key={index}>
+                      <td>{fee.client_name}</td>
+                      <td>${fee.base_fee_amount}</td>
+                      <td>${fee.per_employee_fee_amount}</td>
+                      <td>${total.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
           <div className="section-subtotal">
