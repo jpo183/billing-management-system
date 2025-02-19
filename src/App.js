@@ -44,7 +44,15 @@ function App() {
         <Route path="/partner-billing/:partnerId" element={<ProtectedRoute element={<PartnerBillingSetup />} route="partner-setup" />} />
         <Route path="/client-billing/:partnerId" element={<ProtectedRoute element={<ClientBillingSetup />} route="partner-setup" />} />
         <Route path="/generate-invoice" element={<ProtectedRoute element={<GenerateInvoice />} route="generate-invoice" />} />
-        <Route path="/invoice-review/:id" element={<ProtectedRoute element={<InvoiceReview />} route="generate-invoice" />} />
+        <Route 
+          path="/invoice-review/:id" 
+          element={
+            <ProtectedRoute 
+              element={<InvoiceReview />} 
+              route="generate-invoice"
+            />
+          } 
+        />
         <Route path="/unfinalized-invoices" element={<ProtectedRoute element={<UnfinalizedInvoices />} route="unfinalized-invoices" />} />
         <Route path="/finalized-invoices" element={<ProtectedRoute element={<FinalizedInvoices />} route="finalized-invoices" />} />
         <Route path="/user-management" element={<ProtectedRoute element={<UserManagement />} route="user-management" />} />

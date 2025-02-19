@@ -74,8 +74,13 @@ const UnfinalizedInvoices = () => {
                   <button
                     className="review-button"
                     onClick={() => {
-                      console.log('Navigating to invoice:', invoice.id);
-                      navigate(`/invoice-review/${invoice.id}`);
+                      const invoiceId = invoice.id;
+                      console.log('Attempting to navigate to invoice:', invoiceId);
+                      if (invoiceId) {
+                        navigate(`/invoice-review/${invoiceId}`);
+                      } else {
+                        console.error('No invoice ID available');
+                      }
                     }}
                   >
                     Review

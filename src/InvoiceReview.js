@@ -28,11 +28,18 @@ const InvoiceReview = () => {
         const response = await fetch(`${API_URL}/api/invoices/${id}`);
         
         if (!response.ok) {
-          throw new Error('Failed to fetch invoice data');
+          const errorData = await response.json();
+          console.error('Server error:', errorData);
+          throw new Error(errorData.error || 'Failed to fetch invoice data');
         }
         
         const data = await response.json();
         console.log('📊 Loaded invoice data:', data);
+        
+        if (!data) {
+          throw new Error('No invoice data received');
+        }
+
         setInvoice(data);
         setError(null);
 
@@ -65,14 +72,14 @@ const InvoiceReview = () => {
         setOneTimeBillings(oneTimeData);
       } catch (error) {
         console.error('❌ Error fetching invoice data:', error);
-        setError('Failed to load invoice data. Please try again.');
+        setError(error.message || 'Failed to load invoice data. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchInvoiceData();
-  }, [id]);
+  }, [id, API_URL]);
 
   const handleStatusChange = async (newStatus) => {
     try {
