@@ -117,28 +117,31 @@ const InvoicePrint = () => {
 <table className="summary-table">
   <tbody>
     <tr>
-      <td>Monthly Base Fees</td>
-      <td>${monthlyBillingData.reduce((sum, item) => sum + Number(item.base_fee_amount || 0), 0).toFixed(2)}</td>
-    </tr>
-    <tr>
-      <td>Monthly Per Employee Fees</td>
-      <td>${monthlyBillingData.reduce((sum, item) => sum + Number(item.per_employee_fee_amount || 0), 0).toFixed(2)}</td>
-    </tr>
-    <tr>
       <td>Total Monthly Fees</td>
-      <td>${(Number(invoice.monthly_total) || 0).toFixed(2)}</td>
+      <td>${invoice.monthly_fees
+        .filter(fee => fee.is_pay_group_active)
+        .reduce((sum, fee) => {
+          const baseFee = parseFloat(fee.base_fee_amount || 0);
+          const perEmployeeFee = parseFloat(fee.per_employee_fee_amount || 0);
+          return sum + baseFee + perEmployeeFee;
+        }, 0)
+        .toFixed(2)}</td>
     </tr>
     <tr>
       <td>Recurring Fees</td>
-      <td>${(Number(invoice.recurring_total) || 0).toFixed(2)}</td>
+      <td>${invoice.recurring_fees
+        .reduce((sum, fee) => sum + parseFloat(fee.invoiced_amount || 0), 0)
+        .toFixed(2)}</td>
     </tr>
     <tr>
       <td>One-Time Fees</td>
-      <td>${(Number(invoice.onetime_total) || 0).toFixed(2)}</td>
+      <td>${invoice.one_time_fees
+        .reduce((sum, fee) => sum + parseFloat(fee.invoiced_amount || 0), 0)
+        .toFixed(2)}</td>
     </tr>
     <tr>
       <td><strong>Total Invoice Amount</strong></td>
-      <td><strong>${(Number(invoice.grand_total) || 0).toFixed(2)}</strong></td>
+      <td><strong>${invoice.total_amount}</strong></td>
     </tr>
   </tbody>
 </table>
@@ -146,40 +149,50 @@ const InvoicePrint = () => {
 {/* Monthly Billing Section */}
 <div className="billing-section">
   <h3>Supporting Monthly Billing Data</h3>
-  {monthlyBillingData.length === 0 ? (
-    <p>No supporting monthly data available.</p>
-  ) : (
+  {invoice.monthly_fees?.filter(fee => fee.is_pay_group_active)?.length > 0 ? (
     <table>
       <thead>
         <tr>
           <th>Client Name</th>
           <th>Base Fee</th>
           <th>Per Employee Fee</th>
-          <th>Total Employees</th>
-          <th>Total Monthly Fee</th>
+          <th>Total</th>
         </tr>
       </thead>
       <tbody>
-        {monthlyBillingData.map((billing, index) => (
-          <tr key={index}>
-            <td>{billing.client_name || "N/A"}</td>
-            <td>${Number(billing.base_fee_amount || 0).toFixed(2)}</td>
-            <td>${Number(billing.per_employee_fee_amount || 0).toFixed(2)}</td>
-            <td>{billing.total_active_employees || 0}</td>
-            <td>${Number(billing.total_monthly_fee || 0).toFixed(2)}</td>
-          </tr>
-        ))}
+        {invoice.monthly_fees
+          .filter(fee => fee.is_pay_group_active)
+          .map((fee, index) => {
+            const baseFee = parseFloat(fee.base_fee_amount || 0);
+            const perEmployeeFee = parseFloat(fee.per_employee_fee_amount || 0);
+            const total = baseFee + perEmployeeFee;
+
+            return (
+              <tr key={index}>
+                <td>{fee.client_name}</td>
+                <td>${fee.base_fee_amount}</td>
+                <td>${fee.per_employee_fee_amount}</td>
+                <td>${total.toFixed(2)}</td>
+              </tr>
+            );
+          })}
       </tbody>
       <tfoot>
         <tr>
-          <td><strong>Monthly Subtotal:</strong></td>
-          <td><strong>${monthlyBillingData.reduce((sum, item) => sum + Number(item.base_fee_amount || 0), 0).toFixed(2)}</strong></td>
-          <td><strong>${monthlyBillingData.reduce((sum, item) => sum + Number(item.per_employee_fee_amount || 0), 0).toFixed(2)}</strong></td>
-          <td></td>
-          <td><strong>${monthlyBillingData.reduce((sum, item) => sum + Number(item.total_monthly_fee || 0), 0).toFixed(2)}</strong></td>
+          <td colSpan="3"><strong>Monthly Subtotal:</strong></td>
+          <td><strong>${invoice.monthly_fees
+            .filter(fee => fee.is_pay_group_active)
+            .reduce((sum, fee) => {
+              const baseFee = parseFloat(fee.base_fee_amount || 0);
+              const perEmployeeFee = parseFloat(fee.per_employee_fee_amount || 0);
+              return sum + baseFee + perEmployeeFee;
+            }, 0)
+            .toFixed(2)}</strong></td>
         </tr>
       </tfoot>
     </table>
+  ) : (
+    <p>No active monthly fees</p>
   )}
 </div>
 
