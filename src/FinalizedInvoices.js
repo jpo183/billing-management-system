@@ -59,14 +59,15 @@ const FinalizedInvoices = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5050/api/invoice/${invoiceId}/status`, {
+      const response = await fetch(`${API_URL}/api/invoices/${invoiceId}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "draft" }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to reopen invoice");
+        const errorData = await response.json();
+        throw new Error(errorData.details || "Failed to reopen invoice");
       }
 
       alert("Invoice successfully reopened!");
@@ -75,7 +76,7 @@ const FinalizedInvoices = () => {
       setInvoices((prev) => prev.filter((inv) => inv.id !== invoiceId));
     } catch (error) {
       console.error("Error reopening invoice:", error);
-      alert("Failed to reopen invoice");
+      alert(error.message);
     }
   };
 

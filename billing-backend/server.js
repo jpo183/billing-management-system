@@ -1634,6 +1634,181 @@ app.get("/api/invoices/:id/onetime", async (req, res) => {
   }
 });
 
+// Finalize an invoice
+app.post("/api/invoices/:id/finalize", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    console.log(`📝 Finalizing invoice ${req.params.id}...`);
+
+    // Update the invoice status to finalized
+    const result = await client.query(
+      `UPDATE invoice_master 
+       SET status = 'final'
+       WHERE id = $1 AND status = 'draft'
+       RETURNING *`,
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('Invoice not found or not in draft status');
+    }
+
+    // Log the finalized invoice details
+    console.log('✅ Finalized invoice details:', {
+      invoice_id: result.rows[0].id,
+      invoice_number: result.rows[0].invoice_number,
+      status: result.rows[0].status
+    });
+
+    await client.query('COMMIT');
+    res.json({ 
+      success: true,
+      message: 'Invoice finalized successfully',
+      invoice: result.rows[0]
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error finalizing invoice:', error);
+    res.status(500).json({ 
+      error: 'Failed to finalize invoice',
+      details: error.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// Get finalized invoices with filters
+app.get("/api/invoices/final", async (req, res) => {
+  try {
+    const { partner_id, from_date, to_date } = req.query;
+    console.log('🔍 Fetching finalized invoices with filters:', { partner_id, from_date, to_date });
+
+    let query = `
+      SELECT 
+        im.id,
+        im.invoice_number,
+        im.partner_name,
+        im.invoice_date,
+        im.invoice_month,
+        im.status,
+        im.total_amount,
+        COALESCE(SUM(imf.total_monthly_fee), 0) as monthly_total,
+        COALESCE((SELECT SUM(irf.invoiced_amount) FROM invoice_recurring_fees irf WHERE irf.invoice_id = im.id), 0) as recurring_total,
+        COALESCE((SELECT SUM(iotf.invoiced_amount) FROM invoice_one_time_fees iotf WHERE iotf.invoice_id = im.id), 0) as onetime_total,
+        im.total_amount as grand_total
+      FROM invoice_master im
+      LEFT JOIN invoice_monthly_fees imf ON im.id = imf.invoice_id
+      WHERE im.status = 'final'
+    `;
+
+    const queryParams = [];
+    let paramCount = 1;
+
+    if (partner_id) {
+      query += ` AND im.partner_id = $${paramCount}`;
+      queryParams.push(partner_id);
+      paramCount++;
+    }
+
+    if (from_date) {
+      query += ` AND im.invoice_date >= $${paramCount}`;
+      queryParams.push(from_date);
+      paramCount++;
+    }
+
+    if (to_date) {
+      query += ` AND im.invoice_date <= $${paramCount}`;
+      queryParams.push(to_date);
+      paramCount++;
+    }
+
+    query += ` 
+      GROUP BY 
+        im.id, 
+        im.invoice_number,
+        im.partner_name,
+        im.invoice_date,
+        im.invoice_month,
+        im.status,
+        im.total_amount
+      ORDER BY im.invoice_date DESC
+    `;
+
+    const result = await pool.query(query, queryParams);
+    console.log(`✅ Found ${result.rows.length} finalized invoices`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching finalized invoices:', error);
+    res.status(500).json({ error: 'Failed to fetch finalized invoices' });
+  }
+});
+
+// Update invoice status (for reopening finalized invoices)
+app.put("/api/invoices/:id/status", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!status) {
+      throw new Error('Status is required');
+    }
+    
+    if (!['draft', 'final', 'void'].includes(status)) {
+      throw new Error('Invalid status. Must be draft, final, or void');
+    }
+
+    await client.query('BEGIN');
+
+    // First check current status
+    const currentStatus = await client.query(
+      `SELECT status FROM invoice_master WHERE id = $1`,
+      [id]
+    );
+
+    if (currentStatus.rows.length === 0) {
+      throw new Error('Invoice not found');
+    }
+
+    // Validate status transition
+    const current = currentStatus.rows[0].status;
+    if (current === status) {
+      throw new Error(`Invoice is already in ${status} status`);
+    }
+
+    if (current === 'void' && status !== 'draft') {
+      throw new Error('Voided invoices can only be changed to draft status');
+    }
+
+    console.log(`🔄 Updating invoice ${id} status from ${current} to ${status}`);
+    
+    const result = await client.query(
+      `UPDATE invoice_master 
+       SET status = $1
+       WHERE id = $2 
+       RETURNING *`,
+      [status, id]
+    );
+
+    await client.query('COMMIT');
+    
+    console.log('✅ Successfully updated invoice status');
+    res.json(result.rows[0]);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error updating invoice status:', error);
+    res.status(500).json({ 
+      error: 'Failed to update invoice status',
+      details: error.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
