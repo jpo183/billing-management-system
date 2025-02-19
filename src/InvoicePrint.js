@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./InvoicePrint.css";
-import LogoImage from './PWX\ logo.jpg'; 
+import LogoImage from './PWX logo.jpg'; 
 
+// Add API_URL constant
+const API_URL = process.env.REACT_APP_API_URL || 'https://billing-system-api-8m6c.onrender.com';
 
 const InvoicePrint = () => {
   const { invoiceId } = useParams();
@@ -14,33 +16,39 @@ const InvoicePrint = () => {
 
   useEffect(() => {
     const fetchInvoice = async () => {
+      console.log('🔍 Fetching invoice details for ID:', invoiceId);
       try {
-        const response = await fetch(`http://localhost:5050/api/invoice/${invoiceId}`);
+        const response = await fetch(`${API_URL}/api/invoices/${invoiceId}`);
         const data = await response.json();
+        console.log('✅ Invoice data received:', data);
         setInvoice(data);
       } catch (error) {
-        console.error("Error fetching invoice:", error);
+        console.error("❌ Error fetching invoice:", error);
       }
     };
 
     const fetchBillingData = async () => {
+      console.log('🔍 Fetching billing data...');
       try {
         // Fetch monthly billing data
-        const monthlyResponse = await fetch(`http://localhost:5050/api/invoice/${invoiceId}/monthly`);
+        const monthlyResponse = await fetch(`${API_URL}/api/invoices/${invoiceId}/monthly`);
         const monthlyData = await monthlyResponse.json();
+        console.log('📊 Monthly billing data:', monthlyData);
         setMonthlyBillingData(monthlyData);
 
         // Fetch recurring billing data
-        const recurringResponse = await fetch(`http://localhost:5050/api/invoice/${invoiceId}/recurring`);
+        const recurringResponse = await fetch(`${API_URL}/api/invoices/${invoiceId}/recurring`);
         const recurringData = await recurringResponse.json();
+        console.log('🔄 Recurring billing data:', recurringData);
         setRecurringBillingData(recurringData);
 
         // Fetch one-time billing data
-        const oneTimeResponse = await fetch(`http://localhost:5050/api/invoice/${invoiceId}/onetime`);
+        const oneTimeResponse = await fetch(`${API_URL}/api/invoices/${invoiceId}/onetime`);
         const oneTimeData = await oneTimeResponse.json();
+        console.log('1️⃣ One-time billing data:', oneTimeData);
         setOneTimeBillingData(oneTimeData);
       } catch (error) {
-        console.error("Error fetching billing data:", error);
+        console.error("❌ Error fetching billing data:", error);
       }
     };
 
