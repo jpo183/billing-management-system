@@ -73,7 +73,10 @@ const UnfinalizedInvoices = () => {
                 <td>
                   <button
                     className="review-button"
-                    onClick={() => navigate(`/invoice-review/${invoice.id}`)}
+                    onClick={() => {
+                      console.log('Navigating to invoice:', invoice.id);
+                      navigate(`/invoice-review/${invoice.id}`);
+                    }}
                   >
                     Review
                   </button>

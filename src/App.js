@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import MainNavigation from './MainNavigation';
 import PartnerSetup from './PartnerSetup';
 import OneTimeBilling from './OneTimeBilling';
@@ -25,7 +25,8 @@ function App() {
 
   return (
     <ErrorBoundary>
-       <Routes>
+      <Router>
+        <Routes>
           <Route path="/login" element={<Login />} />
           <Route 
             path="/" 
@@ -44,14 +45,15 @@ function App() {
           <Route path="/partner-billing/:partnerId" element={<ProtectedRoute element={<PartnerBillingSetup />} route="partner-setup" />} />
           <Route path="/client-billing/:partnerId" element={<ProtectedRoute element={<ClientBillingSetup />} route="partner-setup" />} />
           <Route path="/generate-invoice" element={<ProtectedRoute element={<GenerateInvoice />} route="generate-invoice" />} />
-          <Route path="/invoice-review/:invoiceId" element={<ProtectedRoute element={<InvoiceReview />} route="generate-invoice" />} />
+          <Route path="/invoice-review/:id" element={<ProtectedRoute element={<InvoiceReview />} route="generate-invoice" />} />
           <Route path="/unfinalized-invoices" element={<ProtectedRoute element={<UnfinalizedInvoices />} route="unfinalized-invoices" />} />
           <Route path="/finalized-invoices" element={<ProtectedRoute element={<FinalizedInvoices />} route="finalized-invoices" />} />
           <Route path="/user-management" element={<ProtectedRoute element={<UserManagement />} route="user-management" />} />
           <Route path="/invoice-print/:invoiceId" element={<ProtectedRoute element={<InvoicePrint />} route="finalized-invoices" />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-            </ErrorBoundary>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

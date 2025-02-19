@@ -16,6 +16,13 @@ const InvoiceReview = () => {
 
   useEffect(() => {
     const fetchInvoiceData = async () => {
+      if (!id) {
+        console.error('No invoice ID provided');
+        setError('Invalid invoice ID');
+        setLoading(false);
+        return;
+      }
+
       try {
         console.log('🔄 Fetching invoice details for ID:', id);
         const response = await fetch(`${API_URL}/api/invoices/${id}`);
