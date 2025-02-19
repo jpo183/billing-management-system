@@ -1735,6 +1735,144 @@ app.get("/api/invoices/draft", async (req, res) => {
   }
 });
 
+// Get invoice details with all fees
+app.get("/api/invoices/:id", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    console.log(`🔍 Fetching invoice ${req.params.id} details...`);
+    
+    // Get master record
+    const masterResult = await client.query(
+      `SELECT * FROM invoice_master WHERE id = $1`,
+      [req.params.id]
+    );
+
+    if (masterResult.rows.length === 0) {
+      throw new Error('Invoice not found');
+    }
+
+    // Get monthly fees
+    const monthlyResult = await client.query(
+      `SELECT * FROM invoice_monthly_fees WHERE invoice_id = $1`,
+      [req.params.id]
+    );
+
+    // Get recurring fees
+    const recurringResult = await client.query(
+      `SELECT * FROM invoice_recurring_fees WHERE invoice_id = $1`,
+      [req.params.id]
+    );
+
+    // Get one-time fees
+    const oneTimeResult = await client.query(
+      `SELECT * FROM invoice_one_time_fees WHERE invoice_id = $1`,
+      [req.params.id]
+    );
+
+    const invoice = {
+      ...masterResult.rows[0],
+      monthly_fees: monthlyResult.rows,
+      recurring_fees: recurringResult.rows,
+      one_time_fees: oneTimeResult.rows
+    };
+
+    console.log('✅ Invoice details fetched:', {
+      id: invoice.id,
+      invoice_number: invoice.invoice_number,
+      status: invoice.status,
+      fee_counts: {
+        monthly: monthlyResult.rows.length,
+        recurring: recurringResult.rows.length,
+        onetime: oneTimeResult.rows.length
+      }
+    });
+
+    res.json(invoice);
+  } catch (error) {
+    console.error('❌ Error fetching invoice details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      detail: error.detail
+    });
+    res.status(500).json({ 
+      error: 'Failed to fetch invoice details',
+      details: error.message 
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// Get monthly fees for an invoice
+app.get("/api/invoices/:id/monthly", async (req, res) => {
+  try {
+    console.log(`🔄 Fetching monthly fees for invoice ${req.params.id}...`);
+    const result = await pool.query(
+      `SELECT * FROM invoice_monthly_fees WHERE invoice_id = $1`,
+      [req.params.id]
+    );
+    
+    console.log(`✅ Found ${result.rows.length} monthly fees`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching monthly fees:', {
+      message: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      error: 'Failed to fetch monthly fees',
+      details: error.message 
+    });
+  }
+});
+
+// Get recurring fees for an invoice
+app.get("/api/invoices/:id/recurring", async (req, res) => {
+  try {
+    console.log(`🔄 Fetching recurring fees for invoice ${req.params.id}...`);
+    const result = await pool.query(
+      `SELECT * FROM invoice_recurring_fees WHERE invoice_id = $1`,
+      [req.params.id]
+    );
+    
+    console.log(`✅ Found ${result.rows.length} recurring fees`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching recurring fees:', {
+      message: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      error: 'Failed to fetch recurring fees',
+      details: error.message 
+    });
+  }
+});
+
+// Get one-time fees for an invoice
+app.get("/api/invoices/:id/onetime", async (req, res) => {
+  try {
+    console.log(`🔄 Fetching one-time fees for invoice ${req.params.id}...`);
+    const result = await pool.query(
+      `SELECT * FROM invoice_one_time_fees WHERE invoice_id = $1`,
+      [req.params.id]
+    );
+    
+    console.log(`✅ Found ${result.rows.length} one-time fees`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching one-time fees:', {
+      message: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      error: 'Failed to fetch one-time fees',
+      details: error.message 
+    });
+  }
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
