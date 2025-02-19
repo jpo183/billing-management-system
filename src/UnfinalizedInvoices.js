@@ -90,15 +90,22 @@ const UnfinalizedInvoices = () => {
                     onClick={async () => {
                       if (window.confirm('Are you sure you want to void this invoice?')) {
                         try {
+                          console.log('🗑️ Attempting to void invoice:', invoice.id);
                           const response = await fetch(
                             `${API_URL}/api/invoices/${invoice.id}/void`,
                             { method: 'POST' }
                           );
-                          if (!response.ok) throw new Error('Failed to void invoice');
-                          // Refresh the list
+                          
+                          if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || 'Failed to void invoice');
+                          }
+                          
+                          console.log('✅ Successfully voided invoice:', invoice.id);
+                          // Refresh the list by removing the voided invoice
                           setInvoices(invoices.filter(inv => inv.id !== invoice.id));
                         } catch (error) {
-                          console.error('Failed to void invoice:', error);
+                          console.error('❌ Failed to void invoice:', error);
                           alert('Failed to void invoice. Please try again.');
                         }
                       }

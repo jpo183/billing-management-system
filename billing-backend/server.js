@@ -1492,10 +1492,11 @@ app.post("/api/invoices/:id/void", async (req, res) => {
     await client.query('BEGIN');
     
     console.log(`🗑️ Voiding invoice ${req.params.id}...`);
+
+    // First update the master record status
     const result = await client.query(
       `UPDATE invoice_master 
-       SET status = 'void', 
-           updated_at = CURRENT_TIMESTAMP 
+       SET status = 'void'
        WHERE id = $1 
        RETURNING *`,
       [req.params.id]
@@ -1505,13 +1506,27 @@ app.post("/api/invoices/:id/void", async (req, res) => {
       throw new Error('Invoice not found');
     }
 
+    // Log the voided invoice details
+    console.log('📝 Voided invoice details:', {
+      invoice_id: result.rows[0].id,
+      invoice_number: result.rows[0].invoice_number,
+      status: result.rows[0].status
+    });
+
     await client.query('COMMIT');
     console.log('✅ Invoice voided successfully');
-    res.json({ success: true });
+    res.json({ 
+      success: true,
+      message: 'Invoice voided successfully',
+      invoice: result.rows[0]
+    });
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Error voiding invoice:', error);
-    res.status(500).json({ error: 'Failed to void invoice' });
+    res.status(500).json({ 
+      error: 'Failed to void invoice',
+      details: error.message 
+    });
   } finally {
     client.release();
   }
