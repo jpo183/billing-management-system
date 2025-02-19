@@ -154,7 +154,10 @@ const InvoiceReview = () => {
             </tbody>
           </table>
           <div className="section-subtotal">
-            Monthly Fees Subtotal: ${invoice.monthly_total}
+            Monthly Fees Subtotal: ${invoice.monthly_fees
+              .filter(fee => fee.is_pay_group_active)
+              .reduce((sum, fee) => sum + parseFloat(fee.total_monthly_fee || 0), 0)
+              .toFixed(2)}
           </div>
         </>
       ) : <p>No active monthly fees</p>}
@@ -193,7 +196,9 @@ const InvoiceReview = () => {
             </tbody>
           </table>
           <div className="section-subtotal">
-            Recurring Fees Subtotal: ${invoice.recurring_total}
+            Recurring Fees Subtotal: ${invoice.recurring_fees
+              .reduce((sum, fee) => sum + parseFloat(fee.invoiced_amount || 0), 0)
+              .toFixed(2)}
           </div>
         </>
       ) : <p>No recurring fees</p>}
@@ -225,7 +230,9 @@ const InvoiceReview = () => {
             </tbody>
           </table>
           <div className="section-subtotal">
-            One-Time Fees Subtotal: ${invoice.onetime_total}
+            One-Time Fees Subtotal: ${invoice.one_time_fees
+              .reduce((sum, fee) => sum + parseFloat(fee.invoiced_amount || 0), 0)
+              .toFixed(2)}
           </div>
         </>
       ) : <p>No one-time fees</p>}
