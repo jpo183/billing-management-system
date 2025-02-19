@@ -1393,7 +1393,7 @@ app.post("/api/generate-invoice", async (req, res) => {
             invoice_id, addl_billing_id, partner_id, partner_code,
             client_name, item_name, item_code, billing_item_id,
             billing_date, original_amount, invoiced_amount, override_reason
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
           [
             invoice_id,
             fee.addl_billing_id,
@@ -1402,6 +1402,7 @@ app.post("/api/generate-invoice", async (req, res) => {
             fee.client_name,
             fee.item_name,
             fee.item_code,
+            fee.billing_item_id,
             fee.billing_date,
             fee.original_amount,
             fee.invoiced_amount,
