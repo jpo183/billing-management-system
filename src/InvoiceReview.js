@@ -162,7 +162,11 @@ const InvoiceReview = () => {
           <div className="section-subtotal">
             Monthly Fees Subtotal: ${invoice.monthly_fees
               .filter(fee => fee.is_pay_group_active)
-              .reduce((sum, fee) => sum + parseFloat(fee.total_monthly_fee || 0), 0)
+              .reduce((sum, fee) => {
+                const baseFee = parseFloat(fee.base_fee_amount || 0);
+                const perEmployeeFee = parseFloat(fee.per_employee_fee_amount || 0);
+                return sum + baseFee + perEmployeeFee;
+              }, 0)
               .toFixed(2)}
           </div>
         </>
