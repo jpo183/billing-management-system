@@ -60,14 +60,15 @@ body {
 }
 
 /* Container Styles */
+.container, 
 .billing-import-container,
 .billing-container {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 2rem auto;
   padding: 2rem;
   background: var(--darker-grey);
   border-radius: 12px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--primary-pink);
 }
 
@@ -76,18 +77,11 @@ table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  margin-top: 1.5rem;
+  margin: 1.5rem 0;
   background: var(--dark-grey);
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: var(--shadow);
-}
-
-th, td {
-  border: 1px solid var(--medium-grey);
-  padding: 1rem;
-  text-align: left;
-  color: var(--white);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 th {
@@ -97,10 +91,20 @@ th {
   text-transform: uppercase;
   font-size: 0.9rem;
   letter-spacing: 0.05em;
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 2px solid var(--primary-pink);
+}
+
+td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--medium-grey);
+  color: var(--white);
 }
 
 tr:hover {
   background: var(--medium-grey);
+  transition: background-color 0.2s ease;
 }
 
 /* Table Inputs */
@@ -210,20 +214,32 @@ input[type="text"]:focus {
   transform: translateY(-2px);
 }
 
-.back-button {
-  background-color: var(--medium-grey);
-  color: var(--white);
-  border: none;
+.back-button, 
+.nav-button,
+.upload-button,
+.generate-button {
+  background: var(--darker-grey);
+  color: var(--primary-pink);
+  border: 2px solid var(--primary-pink);
   padding: 0.75rem 1.5rem;
-  cursor: pointer;
-  font-size: 0.9rem;
   border-radius: 8px;
-  transition: var(--transition);
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.back-button:hover {
-  background-color: var(--dark-grey);
+.back-button:hover,
+.nav-button:hover,
+.upload-button:hover,
+.generate-button:hover {
+  background: var(--primary-pink);
+  color: var(--white);
   transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(255, 107, 157, 0.2);
 }
 
 /* Utility Classes */
@@ -267,8 +283,6 @@ input[type="text"]:focus {
     break-inside: avoid;
   }
 }
-
-
 
 /* Responsive Design */
 @media (max-width: 768px) {
