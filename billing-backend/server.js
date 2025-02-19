@@ -1456,6 +1456,113 @@ app.post("/api/generate-invoice", async (req, res) => {
 // Make sure this is at the end of all route definitions
 console.log('✅ All routes registered');
 
+// Add these routes before app.listen()
+
+// Get draft invoices
+app.get("/api/invoices/draft", async (req, res) => {
+  try {
+    console.log('🔄 Fetching draft invoices...');
+    const result = await pool.query(
+      `SELECT 
+        im.id, im.invoice_number, im.partner_name, 
+        im.invoice_month, im.invoice_date, im.total_amount, 
+        im.status, im.created_at
+       FROM invoice_master im
+       WHERE im.status = 'draft'
+       ORDER BY im.created_at DESC`
+    );
+    
+    console.log(`✅ Found ${result.rows.length} draft invoices`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching draft invoices:', error);
+    res.status(500).json({ error: 'Failed to fetch draft invoices' });
+  }
+});
+
+// Void an invoice
+app.post("/api/invoices/:id/void", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    console.log(`🗑️ Voiding invoice ${req.params.id}...`);
+    const result = await client.query(
+      `UPDATE invoice_master 
+       SET status = 'void', 
+           updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $1 
+       RETURNING *`,
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('Invoice not found');
+    }
+
+    await client.query('COMMIT');
+    console.log('✅ Invoice voided successfully');
+    res.json({ success: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error voiding invoice:', error);
+    res.status(500).json({ error: 'Failed to void invoice' });
+  } finally {
+    client.release();
+  }
+});
+
+// Get invoice details
+app.get("/api/invoices/:id", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    console.log(`🔍 Fetching invoice ${req.params.id} details...`);
+    
+    // Get master record
+    const masterResult = await client.query(
+      `SELECT * FROM invoice_master WHERE id = $1`,
+      [req.params.id]
+    );
+
+    if (masterResult.rows.length === 0) {
+      throw new Error('Invoice not found');
+    }
+
+    // Get monthly fees
+    const monthlyResult = await client.query(
+      `SELECT * FROM invoice_monthly_fees WHERE invoice_id = $1`,
+      [req.params.id]
+    );
+
+    // Get recurring fees
+    const recurringResult = await client.query(
+      `SELECT * FROM invoice_recurring_fees WHERE invoice_id = $1`,
+      [req.params.id]
+    );
+
+    // Get one-time fees
+    const oneTimeResult = await client.query(
+      `SELECT * FROM invoice_one_time_fees WHERE invoice_id = $1`,
+      [req.params.id]
+    );
+
+    const invoice = {
+      ...masterResult.rows[0],
+      monthly_fees: monthlyResult.rows,
+      recurring_fees: recurringResult.rows,
+      one_time_fees: oneTimeResult.rows
+    };
+
+    console.log('✅ Invoice details fetched successfully');
+    res.json(invoice);
+  } catch (error) {
+    console.error('❌ Error fetching invoice details:', error);
+    res.status(500).json({ error: 'Failed to fetch invoice details' });
+  } finally {
+    client.release();
+  }
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
