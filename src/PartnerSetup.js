@@ -78,6 +78,12 @@ const PartnerSetup = () => {
   };
 
   const handleSave = async () => {
+    // Validate required fields
+    if (!partnerCode || !partnerName || !contactName || !contactEmail || !phoneNumber || !contractStartDate) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
     const partnerData = {
       partner_code: partnerCode,
       partner_name: partnerName,
@@ -92,12 +98,44 @@ const PartnerSetup = () => {
     };
 
     try {
-      const response = await axios.post(`${apiUrl}/api/partners`, partnerData);
+      let response;
+      
+      if (editingPartner && editingPartner.id) {
+        console.log('Updating existing partner:', editingPartner.id);
+        // Update existing partner
+        response = await axios.put(
+          `${apiUrl}/api/partners/${editingPartner.id}`, 
+          partnerData
+        );
+      } else {
+        console.log('Creating new partner');
+        // Check if partner code already exists
+        try {
+          const checkResponse = await axios.get(`${apiUrl}/api/partners/check-code/${partnerCode}`);
+          if (checkResponse.data.exists) {
+            alert(`Partner code ${partnerCode} already exists. Please use a different code.`);
+            return;
+          }
+        } catch (checkError) {
+          console.error('Error checking partner code:', checkError);
+        }
+
+        // Create new partner
+        response = await axios.post(
+          `${apiUrl}/api/partners`, 
+          partnerData
+        );
+      }
+
+      console.log('Save successful:', response.data);
       setIsFormVisible(false);
       resetForm();
+      setEditingPartner(null);
       fetchPartners();
     } catch (error) {
       console.error('Error saving partner:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to save partner';
+      alert(`Error: ${errorMessage}`);
     }
   };
 
