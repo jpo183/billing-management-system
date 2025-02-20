@@ -1970,6 +1970,21 @@ app.post("/api/invoices/:id/void", async (req, res) => {
   }
 });
 
+// Add this route to check if partner code exists
+app.get('/api/partners/check-code/:code', async (req, res) => {
+  try {
+    const { code } = req.params;
+    const result = await pool.query(
+      'SELECT EXISTS(SELECT 1 FROM partners WHERE partner_code = $1)',
+      [code]
+    );
+    res.json({ exists: result.rows[0].exists });
+  } catch (error) {
+    console.error('Error checking partner code:', error);
+    res.status(500).json({ error: 'Failed to check partner code' });
+  }
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
