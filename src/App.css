@@ -150,31 +150,37 @@ table {
   border-spacing: 0;
   margin: 1.5rem 0;
   background: var(--dark-grey);
-  border-radius: 16px;
+  border-radius: 8px;
   overflow: hidden;
   box-shadow: var(--shadow-lg);
+  border: 1px solid var(--primary-pink);
 }
 
 th {
-  background: var(--darker-grey);
+  background: var(--black);
   color: var(--primary-pink);
   font-weight: 600;
-  font-size: 0.9rem;
-  padding: 1.25rem 1rem;
+  font-size: 0.95rem;
+  padding: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-bottom: 1px solid rgba(255, 75, 140, 0.2);
+  border-bottom: 2px solid var(--primary-pink);
 }
 
 td {
-  padding: 1.25rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-bottom: 1px solid var(--primary-pink);
   color: var(--white);
+  background: var(--darker-grey);
 }
 
-tr:hover {
-  background: rgba(255, 75, 140, 0.05);
-  transition: var(--transition);
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: var(--black);
+  transition: background-color 0.2s ease;
 }
 
 /* Table Inputs */
@@ -198,19 +204,20 @@ table input[type="checkbox"] {
 
 /* Table Actions */
 table button {
-  background: var(--darker-grey);
+  background: var(--black);
   color: var(--primary-pink);
   border: 1px solid var(--primary-pink);
   padding: 0.5rem 1rem;
   margin: 0.25rem;
   border-radius: 4px;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s ease;
 }
 
 table button:hover {
   background: var(--primary-pink);
   color: var(--white);
+  transform: translateY(-1px);
 }
 
 table button.delete-button {
