@@ -253,7 +253,10 @@ const handleGenerateInvoice = async () => {
             });
 
             const mappedItem = {
-              partner_billing_id: item.partner_id,
+              partner_billing_id: recurringPartnerBilling.find(pb => 
+                pb.billing_source === 'partner_billing' && 
+                pb.billing_item_id === item.billing_item_id
+              )?.id,
               partner_id: parseInt(selectedPartner),
               partner_code: partners.find(p => p.id === parseInt(selectedPartner)).partner_code,
               client_name: item.client_name || 'N/A',
@@ -265,6 +268,17 @@ const handleGenerateInvoice = async () => {
               override_reason: recurringOverrideReason[item.id] || null,
               billing_frequency: item.billing_frequency
             };
+
+            console.log('📝 Mapped recurring fee:', {
+              original_id: item.id,
+              billing_item_id: item.billing_item_id,
+              partner_id: item.partner_id,
+              found_partner_billing: recurringPartnerBilling.find(pb => 
+                pb.billing_source === 'partner_billing' && 
+                pb.billing_item_id === item.billing_item_id
+              ),
+              mapped_partner_billing_id: mappedItem.partner_billing_id
+            });
 
             console.log('📝 Final mapped item:', mappedItem);
             return mappedItem;
