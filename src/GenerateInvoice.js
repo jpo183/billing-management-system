@@ -200,12 +200,38 @@ const handleGenerateInvoice = async () => {
 
         // Include selected recurring partner billing items
         ...recurringPartnerBilling
-          .filter(item => selectedRecurringItems.includes(item.id))
+          .filter(item => {
+            const isSelected = selectedRecurringItems.includes(item.id);
+            console.log('🔍 Checking item:', {
+              id: item.id,
+              name: item.item_name,
+              isSelected,
+              billing_source: item.billing_source,
+              client_name: item.client_name
+            });
+            return isSelected;
+          })
           .map(item => {
+            console.log('💫 Processing recurring item:', {
+              id: item.id,
+              billing_item_id: item.billing_item_id,
+              item_name: item.item_name,
+              billing_source: item.billing_source,
+              client_name: item.client_name,
+              base_amount: item.base_amount,
+              per_employee_amount: item.per_employee_amount,
+              client_id: item.client_id,
+              amount: item.amount
+            });
+
             let calculatedAmount;
             if (item.billing_source === 'client_billing' && item.per_employee_amount) {
-              // Find corresponding monthly data for employee count
               const monthlyEntry = monthlyData.find(m => m.client_code === item.client_id);
+              console.log('📊 Monthly data for client:', {
+                client_id: item.client_id,
+                found: !!monthlyEntry,
+                employees: monthlyEntry?.total_active_employees
+              });
               
               if (monthlyEntry) {
                 calculatedAmount = parseFloat(item.base_amount || 0) + 
@@ -217,7 +243,14 @@ const handleGenerateInvoice = async () => {
               calculatedAmount = parseFloat(item.amount || 0);
             }
 
-            return {
+            console.log('💰 Amount calculation:', {
+              original: item.amount,
+              calculated: calculatedAmount,
+              override: recurringBillingOverrides[item.id],
+              final: parseFloat(recurringBillingOverrides[item.id] || calculatedAmount)
+            });
+
+            const mappedItem = {
               partner_billing_id: item.id,
               partner_id: parseInt(selectedPartner),
               partner_code: partners.find(p => p.id === parseInt(selectedPartner)).partner_code,
@@ -230,6 +263,9 @@ const handleGenerateInvoice = async () => {
               override_reason: recurringOverrideReason[item.id] || null,
               billing_frequency: item.billing_frequency
             };
+
+            console.log('📝 Final mapped item:', mappedItem);
+            return mappedItem;
           })
       ],
 
