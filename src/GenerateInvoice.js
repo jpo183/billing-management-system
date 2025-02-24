@@ -207,7 +207,8 @@ const handleGenerateInvoice = async () => {
               name: item.item_name,
               isSelected,
               billing_source: item.billing_source,
-              client_name: item.client_name
+              client_name: item.client_name,
+              partner_id: item.partner_id
             });
             return isSelected;
           })
@@ -221,7 +222,8 @@ const handleGenerateInvoice = async () => {
               base_amount: item.base_amount,
               per_employee_amount: item.per_employee_amount,
               client_id: item.client_id,
-              amount: item.amount
+              amount: item.amount,
+              partner_id: item.partner_id
             });
 
             let calculatedAmount;
@@ -251,7 +253,7 @@ const handleGenerateInvoice = async () => {
             });
 
             const mappedItem = {
-              partner_billing_id: item.id,
+              partner_billing_id: item.partner_id,
               partner_id: parseInt(selectedPartner),
               partner_code: partners.find(p => p.id === parseInt(selectedPartner)).partner_code,
               client_name: item.client_name || 'N/A',
