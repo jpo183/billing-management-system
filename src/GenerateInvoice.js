@@ -402,12 +402,6 @@ const calculateTieredFee = (employeeCount) => {
   console.group('Calculate Tiered Fee Detailed Breakdown');
   console.log('Input Employee Count:', employeeCount);
   console.log('Per Employee Fee Object:', perEmployeeFee);
-  console.log('Per Employee Fee Amount:', perEmployeeFee ? perEmployeeFee.amount : 'N/A');
-  console.log('Per Employee Fee Item Properties:', {
-    amount: perEmployeeFee?.amount,
-    billing_type: perEmployeeFee?.billing_type,
-    per_employee_amount: perEmployeeFee?.per_employee_amount
-  });
   console.log('Employee Tiers:', employeeTiers);
 
   // If no per-employee fee is set or amount is zero, return 0
@@ -419,12 +413,10 @@ const calculateTieredFee = (employeeCount) => {
     return 0;
   }
 
-  // Determine which amount to use
-  const feeAmount = parseFloat(perEmployeeFee.per_employee_amount) || 
-                    parseFloat(perEmployeeFee.amount) || 0;
-
   // If no tiers are defined, use flat rate
   if (!employeeTiers.length) {
+    const feeAmount = parseFloat(perEmployeeFee.per_employee_amount) || 
+                     parseFloat(perEmployeeFee.amount) || 0;
     const flatRateFee = Number((employeeCount * feeAmount).toFixed(2));
     console.log('No tiers defined - Using flat rate', {
       employeeCount,
@@ -435,44 +427,38 @@ const calculateTieredFee = (employeeCount) => {
     return flatRateFee;
   }
 
-  let totalFee = 0;
-  let remainingEmployees = employeeCount;
-
   // Sort tiers to ensure correct processing
   const sortedTiers = [...employeeTiers].sort((a, b) => a.tier_min - b.tier_min);
-  console.log('Sorted Tiers:', sortedTiers);
+  
+  // Find the applicable tier based on employee count
+  const applicableTier = sortedTiers.find(tier => 
+    employeeCount >= parseInt(tier.tier_min) && 
+    employeeCount <= parseInt(tier.tier_max)
+  );
 
-  for (const tier of sortedTiers) {
-    const tierMin = parseInt(tier.tier_min);
-    const tierMax = parseInt(tier.tier_max);
-    const rate = parseFloat(tier.per_employee_rate);
-
-    console.log('Current Tier Processing:', {
-      tierMin,
-      tierMax,
-      rate,
-      remainingEmployees
+  if (!applicableTier) {
+    console.log('No applicable tier found - Using highest tier');
+    // If count exceeds all tiers, use the highest tier
+    const highestTier = sortedTiers[sortedTiers.length - 1];
+    const totalFee = Number((employeeCount * parseFloat(highestTier.per_employee_rate)).toFixed(2));
+    console.log('Fee calculation:', {
+      employeeCount,
+      rate: highestTier.per_employee_rate,
+      totalFee
     });
-
-    if (remainingEmployees <= 0) break;
-
-    const employeesInTier = Math.min(
-      remainingEmployees,
-      tierMax - tierMin + 1
-    );
-
-    const tierFee = Number((employeesInTier * rate).toFixed(2));
-    console.log('Tier Fee Calculation:', {
-      employeesInTier,
-      rate,
-      tierFee
-    });
-
-    totalFee = Number((totalFee + tierFee).toFixed(2));
-    remainingEmployees -= employeesInTier;
+    console.groupEnd();
+    return totalFee;
   }
 
-  console.log('Final Total Fee:', totalFee);
+  // Calculate fee using the applicable tier rate for all employees
+  const totalFee = Number((employeeCount * parseFloat(applicableTier.per_employee_rate)).toFixed(2));
+  
+  console.log('Fee calculation:', {
+    employeeCount,
+    applicableTier,
+    rate: applicableTier.per_employee_rate,
+    totalFee
+  });
   console.groupEnd();
   return totalFee;
 };
