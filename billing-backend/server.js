@@ -146,7 +146,7 @@ app.post("/api/upload-billing", async (req, res) => {
 
     // Insert aggregated data
     await pool.query(`
-   INSERT INTO monthly_billing (
+  INSERT INTO monthly_billing (
     month_year, client_code, client_name, legal_company_code, legal_name,
     fein, state_code, total_employees_paid, total_billing,
     total_one_time_billing, pay_group_name, is_pay_group_active,
@@ -171,23 +171,7 @@ SELECT
     SUM(COALESCE(total_active_employees, 0)) as total_active_employees,
     SUM(COALESCE(total_checks_and_vouchers, 0)) as total_checks_and_vouchers
 FROM monthly_billing_staging
-GROUP BY month_year, client_code
-ON CONFLICT (month_year, client_code) 
-DO UPDATE SET 
-    client_name = EXCLUDED.client_name,
-    legal_company_code = EXCLUDED.legal_company_code,
-    legal_name = EXCLUDED.legal_name,
-    fein = EXCLUDED.fein,
-    state_code = EXCLUDED.state_code,
-    total_employees_paid = EXCLUDED.total_employees_paid,
-    total_billing = EXCLUDED.total_billing,
-    total_one_time_billing = EXCLUDED.total_one_time_billing,
-    pay_group_name = EXCLUDED.pay_group_name,
-    is_pay_group_active = EXCLUDED.is_pay_group_active,
-    new_pay_group_count = EXCLUDED.new_pay_group_count,
-    live_payroll_count = EXCLUDED.live_payroll_count,
-    total_active_employees = EXCLUDED.total_active_employees,
-    total_checks_and_vouchers = EXCLUDED.total_checks_and_vouchers;
+GROUP BY month_year, client_code;
     `);
 
     await pool.query('DROP TABLE monthly_billing_staging');
